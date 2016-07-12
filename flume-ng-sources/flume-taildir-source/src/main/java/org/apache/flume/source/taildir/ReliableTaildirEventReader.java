@@ -83,8 +83,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     for (Entry<String, String> e : filePaths.entrySet()) {
       File f = new File(e.getValue());
       File parentDir =  f.getParentFile();
-      Preconditions.checkState(parentDir.exists(),
-        "Directory does not exist: " + parentDir.getAbsolutePath());
+      if (!parentDir.getAbsolutePath().contains("*")) {
+        Preconditions.checkState(parentDir.exists(),
+                "Directory does not exist: " + parentDir.getAbsolutePath());
+      }
       Pattern fileNamePattern = Pattern.compile(f.getName());
       tailFileTable.put(e.getKey(), parentDir, fileNamePattern);
     }
@@ -274,20 +276,44 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     return updateTailFiles(false);
   }
 
-  private List<File> getMatchFiles(File parentDir, final Pattern fileNamePattern) {
+  private void listDirFiles(List<File> files, File dir, FileFilter filter) {
+    File[] childs = dir.listFiles(filter);
+    if(childs == null) return;
+    for (int i = 0; i < childs.length; i++) {
+      if (childs[i].isFile()) {
+        files.add(childs[i]);
+      } else {
+        if (childs[i].isDirectory()) {
+          listDirFiles(files, childs[i], filter);
+        }
+      }
+    }
+  }
+
+  private List<File> getMatchFiles(final File parentDir, final Pattern fileNamePattern) {
     FileFilter filter = new FileFilter() {
       public boolean accept(File f) {
         String fileName = f.getName();
-        if (f.isDirectory() || !fileNamePattern.matcher(fileName).matches()) {
+        Pattern dirPattern = Pattern.compile(parentDir.getAbsolutePath().replace("*", ".*"));
+        if (f.isFile() && (!fileNamePattern.matcher(fileName).matches() || !dirPattern.matcher(f.getParent()).matches())) {
           return false;
         }
         return true;
       }
     };
-    File[] files = parentDir.listFiles(filter);
-    ArrayList<File> result = Lists.newArrayList(files);
-    Collections.sort(result, new TailFile.CompareByLastModifiedTime());
-    return result;
+    ArrayList<File> files = new ArrayList();
+    if(parentDir.getAbsolutePath().contains("*")) {
+      int index = parentDir.getAbsolutePath().indexOf("*");
+      String path = parentDir.getAbsolutePath().substring(0, index);
+      File pparentDir = new File(path);
+      Preconditions.checkState(pparentDir.exists(),
+              "Directory does not exist: " + pparentDir.getAbsolutePath());
+      listDirFiles(files, pparentDir, filter);
+    } else {
+      listDirFiles(files, parentDir, filter);
+    }
+    Collections.sort(files, new TailFile.CompareByLastModifiedTime());
+    return files;
   }
 
   private long getInode(File file) throws IOException {

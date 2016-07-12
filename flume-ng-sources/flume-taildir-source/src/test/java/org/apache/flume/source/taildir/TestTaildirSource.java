@@ -68,12 +68,26 @@ public class TestTaildirSource {
     posFilePath = tmpDir.getAbsolutePath() + "/taildir_position_test.json";
   }
 
+  private boolean delDir(File dir) {
+    if (dir.isDirectory()) {
+      String[] children = dir.list();
+      //Delete Folder Recursively.
+      for (int i=0; i<children.length; i++) {
+        boolean success = delDir(new File(dir, children[i]));
+        if (!success) {
+          return false;
+        }
+      }
+    }
+    return dir.delete();
+  }
+
   @After
   public void tearDown() {
     for (File f : tmpDir.listFiles()) {
       f.delete();
     }
-    tmpDir.delete();
+    delDir(tmpDir);
   }
 
   @Test
@@ -119,6 +133,53 @@ public class TestTaildirSource {
     assertTrue(out.contains("b.log"));
     assertTrue(out.contains("c.log.yyyy-MM-01"));
     assertTrue(out.contains("c.log.yyyy-MM-02"));
+  }
+
+  @Test
+  public void testRecursionAndRegexFileName() throws IOException {
+    File f1 = new File(tmpDir.getAbsolutePath()+"/20160606/01/a.log");
+    Files.createParentDirs(f1);
+    File f2 = new File(tmpDir, "a.log.1");
+    File f3 = new File(tmpDir, "b.log");
+    File f4 = new File(tmpDir.getAbsolutePath()+"/20160607/c.log.yyyy-MM-01");
+    Files.createParentDirs(f4);
+    File f5 = new File(tmpDir, "c.log.yyyy-MM-02");
+    Files.write("a.log\n", f1, Charsets.UTF_8);
+    Files.write("a.log.1\n", f2, Charsets.UTF_8);
+    Files.write("b.log\n", f3, Charsets.UTF_8);
+    Files.write("c.log.yyyy-MM-01\n", f4, Charsets.UTF_8);
+    Files.write("c.log.yyyy-MM-02\n", f5, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "ab c");
+    // Tail a.log and b.log
+    context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/*/01/[ab].log");
+    // Tail files that starts with c.log
+    context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/*/c.log.*");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int i = 0; i < 5; i++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(2, out.size());
+    // Make sure we got every file
+    assertTrue(out.contains("a.log"));
+    assertFalse(out.contains("a.log.1"));
+    assertFalse(out.contains("b.log"));
+    assertTrue(out.contains("c.log.yyyy-MM-01"));
+    assertFalse(out.contains("c.log.yyyy-MM-02"));
   }
 
   @Test
