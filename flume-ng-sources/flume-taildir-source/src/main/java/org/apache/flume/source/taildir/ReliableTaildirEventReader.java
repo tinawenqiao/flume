@@ -63,13 +63,14 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private long updateTime;
   private boolean addByteOffset;
   private boolean committed = true;
+  private int bufferSize;
 
   /**
    * Create a ReliableTaildirEventReader to watch the given directory.
    */
   private ReliableTaildirEventReader(Map<String, String> filePaths,
       Table<String, String, String> headerTable, String positionFilePath,
-      boolean skipToEnd, boolean addByteOffset) throws IOException {
+      boolean skipToEnd, boolean addByteOffset, int bufferSize) throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
     Preconditions.checkNotNull(positionFilePath);
@@ -94,6 +95,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.tailFileTable = tailFileTable;
     this.headerTable = headerTable;
     this.addByteOffset = addByteOffset;
+    this.bufferSize = bufferSize;
     updateTailFiles(skipToEnd);
 
     logger.info("Updating position from position file: " + positionFilePath);
@@ -197,6 +199,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       long lastPos = currentFile.getPos();
       currentFile.updateFilePos(lastPos);
     }
+    currentFile.setBufferSize(this.bufferSize);
     List<Event> events = currentFile.readEvents(numEvents, backoffWithoutNL, addByteOffset);
     if (events.isEmpty()) {
       return events;
@@ -313,6 +316,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     private String positionFilePath;
     private boolean skipToEnd;
     private boolean addByteOffset;
+    private int bufferSize;
 
     public Builder filePaths(Map<String, String> filePaths) {
       this.filePaths = filePaths;
@@ -339,8 +343,13 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
+    public Builder bufferSize(int bufferSize) {
+      this.bufferSize = bufferSize;
+      return this;
+    }
+
     public ReliableTaildirEventReader build() throws IOException {
-      return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd, addByteOffset);
+      return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd, addByteOffset, bufferSize);
     }
   }
 

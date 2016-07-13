@@ -41,7 +41,6 @@ public class TailFile {
   private static final byte BYTE_NL = (byte) 10;
   private static final byte BYTE_CR = (byte) 13;
 
-  private final static int BUFFER_SIZE = 8192;
   private final static int NEED_READING = -1;
 
   private RandomAccessFile raf;
@@ -55,6 +54,7 @@ public class TailFile {
   private byte[] oldBuffer;
   private int bufferPos;
   private long lineReadPos;
+  private int bufferSize;
 
   public TailFile(File file, Map<String, String> headers, long inode, long pos)
       throws IOException {
@@ -86,6 +86,7 @@ public class TailFile {
   public void setLastUpdated(long lastUpdated) { this.lastUpdated = lastUpdated; }
   public void setNeedTail(boolean needTail) { this.needTail = needTail; }
   public void setLineReadPos(long lineReadPos) { this.lineReadPos = lineReadPos; }
+  public void setBufferSize(int bufferSize) { this.bufferSize = bufferSize; }
 
   public boolean updatePos(String path, long inode, long pos) throws IOException {
     if (this.inode == inode && this.path.equals(path)) {
@@ -137,10 +138,10 @@ public class TailFile {
   }
 
   private void readFile() throws IOException {
-    if ((raf.length() - raf.getFilePointer()) < BUFFER_SIZE) {
+    if ((raf.length() - raf.getFilePointer()) < this.bufferSize) {
       buffer = new byte[(int) (raf.length() - raf.getFilePointer())];
     } else {
-      buffer = new byte[BUFFER_SIZE];
+      buffer = new byte[this.bufferSize];
     }
     raf.read(buffer, 0, buffer.length);
     bufferPos = 0;

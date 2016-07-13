@@ -49,4 +49,8 @@ public class TaildirSourceConfigurationConstants {
   public static final String BYTE_OFFSET_HEADER = "byteOffsetHeader";
   public static final String BYTE_OFFSET_HEADER_KEY = "byteoffset";
   public static final boolean DEFAULT_BYTE_OFFSET_HEADER = false;
+
+  /** Max Number of bytes when reading a file each time. */
+  public static final String BUFFER_SIZE = "bufferSize";
+  public static final int DEFAULT_BUFFER_SIZE = 8192;
 }
