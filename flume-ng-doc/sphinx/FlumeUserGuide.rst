@@ -1134,6 +1134,7 @@ cachePatternMatching                true                           Listing direc
                                                                    containing thousands of files. Caching the list of matching files can improve performance.
                                                                    The order in which files are consumed will also be cached.
                                                                    Requires that the file system keeps track of modification times with at least a 1-second granularity.
+pathHeader                          false                          Whether to add file path to the header.
 =================================== ============================== ===================================================
 
 Example for agent named a1:
@@ -1151,6 +1152,7 @@ Example for agent named a1:
   a1.sources.r1.filegroups.f2 = /var/log/test2/.*log.*
   a1.sources.r1.headers.f2.headerKey1 = value2
   a1.sources.r1.headers.f2.headerKey2 = value2-2
+  a1.sources.r1.pathHeader = true
 
 Twitter 1% firehose Source (experimental)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

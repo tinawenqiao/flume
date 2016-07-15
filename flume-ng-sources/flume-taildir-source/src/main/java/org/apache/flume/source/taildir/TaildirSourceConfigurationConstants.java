@@ -55,4 +55,8 @@ public class TaildirSourceConfigurationConstants {
    */
   public static final String CACHE_PATTERN_MATCHING = "cachePatternMatching";
   public static final boolean DEFAULT_CACHE_PATTERN_MATCHING = true;
+
+  /** Whether to add file path to the header*/
+  public static final String PATH_HEADER = "pathHeader";
+  public static final boolean DEFAULT_PATH_HEADER = false;
 }
