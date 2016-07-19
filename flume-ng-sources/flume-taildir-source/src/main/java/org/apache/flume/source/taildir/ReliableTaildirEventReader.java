@@ -198,20 +198,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     }
 
     Map<String, String> headers = currentFile.getHeaders();
-    if(headers != null && !headers.isEmpty()) {
+    if (headers != null && !headers.isEmpty()) {
       for (Event event : events) {
-        if ((headers != null && !headers.isEmpty())) {
-          event.getHeaders().putAll(headers);
-        }
+        event.getHeaders().putAll(headers);
       }
     }
-    if (annotateFileName) {
-      String filename = currentFile.getPath();
-      for (Event event : events) {
-        event.getHeaders().put(fileNameHeader, filename);
-      }
-    }
-
     if (annotateFileName) {
       String filename = currentFile.getPath();
       for (Event event : events) {
@@ -342,7 +333,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
-    public Builder annotateFileName(Boolean annotateFileName) {
+    public Builder annotateFileName(boolean annotateFileName) {
       this.annotateFileName = annotateFileName;
       return this;
     }
