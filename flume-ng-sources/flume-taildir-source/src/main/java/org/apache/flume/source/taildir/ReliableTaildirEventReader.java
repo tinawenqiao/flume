@@ -211,6 +211,13 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
         event.getHeaders().put(fileNameHeader, filename);
       }
     }
+
+    if (annotateFileName) {
+      String filename = currentFile.getPath();
+      for (Event event : events) {
+        event.getHeaders().put(fileNameHeader, filename);
+      }
+    }
     committed = false;
     return events;
   }
@@ -347,7 +354,8 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
 
     public ReliableTaildirEventReader build() throws IOException {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
-                                            addByteOffset, cachePatternMatching, annotateFileName, fileNameHeader);
+                                            addByteOffset, cachePatternMatching,
+                                            annotateFileName, fileNameHeader);
     }
   }
 

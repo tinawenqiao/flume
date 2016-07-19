@@ -47,7 +47,7 @@ import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstant
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants
-        .FILENAME_HEADER_KEY;
+                  .FILENAME_HEADER_KEY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -314,7 +314,6 @@ public class TestTaildirSource {
     txn.commit();
     txn.close();
 
-    // Make sure we got every file path
     assertNotNull(e.getHeaders().get("path"));
     assertEquals(f1.getAbsolutePath(),
             e.getHeaders().get("path"));
