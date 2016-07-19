@@ -57,14 +57,16 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private boolean addByteOffset;
   private boolean cachePatternMatching;
   private boolean committed = true;
-  private boolean pathHeader;
+  private final boolean annotateFileName;
+  private final String fileNameHeader;
 
   /**
    * Create a ReliableTaildirEventReader to watch the given directory.
    */
   private ReliableTaildirEventReader(Map<String, String> filePaths,
       Table<String, String, String> headerTable, String positionFilePath,
-      boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching, boolean pathHeader) throws IOException {
+      boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
+      boolean annotateFileName, String fileNameHeader) throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
     Preconditions.checkNotNull(positionFilePath);
@@ -85,7 +87,8 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.headerTable = headerTable;
     this.addByteOffset = addByteOffset;
     this.cachePatternMatching = cachePatternMatching;
-    this.pathHeader = pathHeader;
+    this.annotateFileName = annotateFileName;
+    this.fileNameHeader = fileNameHeader;
     updateTailFiles(skipToEnd);
 
     logger.info("Updating position from position file: " + positionFilePath);
@@ -195,17 +198,17 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     }
 
     Map<String, String> headers = currentFile.getHeaders();
-    if((headers != null && !headers.isEmpty()) || this.pathHeader == true) {
+    if(headers != null && !headers.isEmpty()) {
       for (Event event : events) {
         if ((headers != null && !headers.isEmpty())) {
           event.getHeaders().putAll(headers);
         }
-        /**
-         * Put the filePath into the header if the header does not contain path key and pathHeader is true.
-         */
-        if (!event.getHeaders().containsKey("path") && this.pathHeader == true) {
-          event.getHeaders().put("path", currentFile.getPath());
-        }
+      }
+    }
+    if (annotateFileName) {
+      String filename = currentFile.getPath();
+      for (Event event : events) {
+        event.getHeaders().put(fileNameHeader, filename);
       }
     }
     committed = false;
@@ -297,7 +300,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     private boolean skipToEnd;
     private boolean addByteOffset;
     private boolean cachePatternMatching;
-    private boolean pathHeader;
+    private Boolean annotateFileName =
+            TaildirSourceConfigurationConstants.DEFAULT_FILE_HEADER;
+    private String fileNameHeader =
+            TaildirSourceConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY;
 
     public Builder filePaths(Map<String, String> filePaths) {
       this.filePaths = filePaths;
@@ -329,14 +335,19 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
-    public Builder pathHeader(boolean pathHeader) {
-      this.pathHeader = pathHeader;
+    public Builder annotateFileName(Boolean annotateFileName) {
+      this.annotateFileName = annotateFileName;
+      return this;
+    }
+
+    public Builder fileNameHeader(String fileNameHeader) {
+      this.fileNameHeader = fileNameHeader;
       return this;
     }
 
     public ReliableTaildirEventReader build() throws IOException {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
-                                            addByteOffset, cachePatternMatching, pathHeader);
+                                            addByteOffset, cachePatternMatching, annotateFileName, fileNameHeader);
     }
   }
 

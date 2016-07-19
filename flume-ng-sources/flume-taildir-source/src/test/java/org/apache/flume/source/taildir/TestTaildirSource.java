@@ -40,10 +40,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants
+        .FILE_GROUPS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants
+        .FILENAME_HEADER_KEY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -286,39 +294,29 @@ public class TestTaildirSource {
   }
 
   @Test
-  public void testPathHeader() throws IOException {
+  public void testPutFilenameHeader() throws IOException {
     File f1 = new File(tmpDir, "file1");
-    File f2 = new File(tmpDir, "file2");
-    File f3 = new File(tmpDir, "file3");
     Files.write("f1\n", f1, Charsets.UTF_8);
-    Files.write("f2\n", f2, Charsets.UTF_8);
-    Files.write("f3\n", f3, Charsets.UTF_8);
 
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "fg");
     context.put(FILE_GROUPS_PREFIX + "fg", tmpDir.getAbsolutePath() + "/file.*");
-    context.put(PATH_HEADER, "true");
+    context.put(FILENAME_HEADER, "true");
+    context.put(FILENAME_HEADER_KEY, "path");
 
     Configurables.configure(source, context);
     source.start();
     source.process();
     Transaction txn = channel.getTransaction();
     txn.begin();
-    List<String> out = Lists.newArrayList();
-    for (int i = 0; i < 3; i++) {
-      Event e = channel.take();
-      if (e != null) {
-        out.add(e.getHeaders().get("path"));
-      }
-    }
+    Event e = channel.take();
     txn.commit();
     txn.close();
 
-    assertEquals(3, out.size());
     // Make sure we got every file path
-    assertTrue(out.contains(tmpDir.getAbsolutePath()+"/file1"));
-    assertTrue(out.contains(tmpDir.getAbsolutePath()+"/file2"));
-    assertTrue(out.contains(tmpDir.getAbsolutePath()+"/file3"));
+    assertNotNull(e.getHeaders().get("path"));
+    assertEquals(f1.getAbsolutePath(),
+            e.getHeaders().get("path"));
   }
 }
