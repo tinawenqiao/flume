@@ -57,13 +57,16 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private boolean addByteOffset;
   private boolean cachePatternMatching;
   private boolean committed = true;
+  private final boolean annotateFileName;
+  private final String fileNameHeader;
 
   /**
    * Create a ReliableTaildirEventReader to watch the given directory.
    */
   private ReliableTaildirEventReader(Map<String, String> filePaths,
       Table<String, String, String> headerTable, String positionFilePath,
-      boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching) throws IOException {
+      boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
+      boolean annotateFileName, String fileNameHeader) throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
     Preconditions.checkNotNull(positionFilePath);
@@ -84,6 +87,8 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.headerTable = headerTable;
     this.addByteOffset = addByteOffset;
     this.cachePatternMatching = cachePatternMatching;
+    this.annotateFileName = annotateFileName;
+    this.fileNameHeader = fileNameHeader;
     updateTailFiles(skipToEnd);
 
     logger.info("Updating position from position file: " + positionFilePath);
@@ -198,6 +203,13 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
         event.getHeaders().putAll(headers);
       }
     }
+
+    if (annotateFileName) {
+      String filename = currentFile.getPath();
+      for (Event event : events) {
+        event.getHeaders().put(fileNameHeader, filename);
+      }
+    }
     committed = false;
     return events;
   }
@@ -287,6 +299,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     private boolean skipToEnd;
     private boolean addByteOffset;
     private boolean cachePatternMatching;
+    private Boolean annotateFileName =
+            TaildirSourceConfigurationConstants.DEFAULT_FILE_HEADER;
+    private String fileNameHeader =
+            TaildirSourceConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY;
 
     public Builder filePaths(Map<String, String> filePaths) {
       this.filePaths = filePaths;
@@ -318,9 +334,20 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
+    public Builder annotateFileName(Boolean annotateFileName) {
+      this.annotateFileName = annotateFileName;
+      return this;
+    }
+
+    public Builder fileNameHeader(String fileNameHeader) {
+      this.fileNameHeader = fileNameHeader;
+      return this;
+    }
+
     public ReliableTaildirEventReader build() throws IOException {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
-                                            addByteOffset, cachePatternMatching);
+                                            addByteOffset, cachePatternMatching,
+                                            annotateFileName, fileNameHeader);
     }
   }
 
