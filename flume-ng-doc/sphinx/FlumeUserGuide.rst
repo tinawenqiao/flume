@@ -976,53 +976,53 @@ Despite the reliability guarantees of this source, there are still
 cases in which events may be duplicated if certain downstream failures occur.
 This is consistent with the guarantees offered by other Flume components.
 
-======================  ==============  ==========================================================
-Property Name            Default         Description
-======================  ==============  ==========================================================
-**channels**             --
-**type**                 --              The component type name, needs to be ``spooldir``.
-**spoolDir**             --              The directory from which to read files from.
-fileSuffix               .COMPLETED      Suffix to append to completely ingested files
-deletePolicy             never           When to delete completed files: ``never`` or ``immediate``
-fileHeader               false           Whether to add a header storing the absolute path filename.
-fileHeaderKey            file            Header key to use when appending absolute path filename to event header.
-basenameHeader           false           Whether to add a header storing the basename of the file.
-basenameHeaderKey        basename        Header Key to use when appending  basename of file to event header.
-ignorePattern            ^$              Regular expression specifying which files to ignore (skip)
-trackerDir               .flumespool     Directory to store metadata related to processing of files.
-                                         If this path is not an absolute path, then it is interpreted as relative to the spoolDir.
-consumeOrder             oldest          In which order files in the spooling directory will be consumed ``oldest``,
-                                         ``youngest`` and ``random``. In case of ``oldest`` and ``youngest``, the last modified
-                                         time of the files will be used to compare the files. In case of a tie, the file
-                                         with smallest lexicographical order will be consumed first. In case of ``random`` any
-                                         file will be picked randomly. When using ``oldest`` and ``youngest`` the whole
-                                         directory will be scanned to pick the oldest/youngest file, which might be slow if there
-                                         are a large number of files, while using ``random`` may cause old files to be consumed
-                                         very late if new files keep coming in the spooling directory.
-pollDelay                500             Delay (in milliseconds) used when polling for new files.
-recursiveDirectorySearch false           Whether to monitor sub directories for new files to read.
-maxBackoff               4000            The maximum time (in millis) to wait between consecutive attempts to
-                                         write to the channel(s) if the channel is full. The source will start at
-                                         a low backoff and increase it exponentially each time the channel throws a
-                                         ChannelException, upto the value specified by this parameter.
-batchSize                100             Granularity at which to batch transfer to the channel
-inputCharset             UTF-8           Character set used by deserializers that treat the input file as text.
-decodeErrorPolicy        ``FAIL``        What to do when we see a non-decodable character in the input file.
-                                         ``FAIL``: Throw an exception and fail to parse the file.
-                                         ``REPLACE``: Replace the unparseable character with the "replacement character" char,
-                                         typically Unicode U+FFFD.
-                                         ``IGNORE``: Drop the unparseable character sequence.
-deserializer             ``LINE``        Specify the deserializer used to parse the file into events.
-                                         Defaults to parsing each line as an event. The class specified must implement
-                                         ``EventDeserializer.Builder``.
-deserializer.*                           Varies per event deserializer.
-bufferMaxLines           --              (Obselete) This option is now ignored.
-bufferMaxLineLength      5000            (Deprecated) Maximum length of a line in the commit buffer. Use deserializer.maxLineLength instead.
-selector.type            replicating     replicating or multiplexing
-selector.*                               Depends on the selector.type value
-interceptors             --              Space-separated list of interceptors
+========================  ==============  ==========================================================
+Property Name             Default         Description
+========================  ==============  ==========================================================
+**channels**              --
+**type**                  --              The component type name, needs to be ``spooldir``.
+**spoolDir**              --              The directory from which to read files from.
+fileSuffix                .COMPLETED      Suffix to append to completely ingested files
+deletePolicy              never           When to delete completed files: ``never`` or ``immediate``
+fileHeader                false           Whether to add a header storing the absolute path filename.
+fileHeaderKey             file            Header key to use when appending absolute path filename to event header.
+basenameHeader            false           Whether to add a header storing the basename of the file.
+basenameHeaderKey         basename        Header Key to use when appending  basename of file to event header.
+ignorePattern             ^$              Regular expression specifying which files to ignore (skip)
+trackerDir                .flumespool     Directory to store metadata related to processing of files.
+                                          If this path is not an absolute path, then it is interpreted as relative to the spoolDir.
+consumeOrder              oldest          In which order files in the spooling directory will be consumed ``oldest``,
+                                          ``youngest`` and ``random``. In case of ``oldest`` and ``youngest``, the last modified
+                                          time of the files will be used to compare the files. In case of a tie, the file
+                                          with smallest lexicographical order will be consumed first. In case of ``random`` any
+                                          file will be picked randomly. When using ``oldest`` and ``youngest`` the whole
+                                          directory will be scanned to pick the oldest/youngest file, which might be slow if there
+                                          are a large number of files, while using ``random`` may cause old files to be consumed
+                                          very late if new files keep coming in the spooling directory.
+pollDelay                 500             Delay (in milliseconds) used when polling for new files.
+recursiveDirectorySearch  false           Whether to monitor sub directories for new files to read.
+maxBackoff                4000            The maximum time (in millis) to wait between consecutive attempts to
+                                          write to the channel(s) if the channel is full. The source will start at
+                                          a low backoff and increase it exponentially each time the channel throws a
+                                          ChannelException, upto the value specified by this parameter.
+batchSize                 100             Granularity at which to batch transfer to the channel
+inputCharset              UTF-8           Character set used by deserializers that treat the input file as text.
+decodeErrorPolicy         ``FAIL``        What to do when we see a non-decodable character in the input file.
+                                          ``FAIL``: Throw an exception and fail to parse the file.
+                                          ``REPLACE``: Replace the unparseable character with the "replacement character" char,
+                                          typically Unicode U+FFFD.
+                                          ``IGNORE``: Drop the unparseable character sequence.
+deserializer              ``LINE``        Specify the deserializer used to parse the file into events.
+                                          Defaults to parsing each line as an event. The class specified must implement
+                                          ``EventDeserializer.Builder``.
+deserializer.*                            Varies per event deserializer.
+bufferMaxLines            --              (Obselete) This option is now ignored.
+bufferMaxLineLength       5000            (Deprecated) Maximum length of a line in the commit buffer. Use deserializer.maxLineLength instead.
+selector.type             replicating     replicating or multiplexing
+selector.*                                Depends on the selector.type value
+interceptors              --              Space-separated list of interceptors
 interceptors.*
-=======================  ==============  ==========================================================
+========================  ==============  ==========================================================
 
 Example for an agent named agent-1:
 
@@ -3238,13 +3238,17 @@ Example for agent named a1:
   a1.sinks.k1.sink.serializer = text
   a1.sinks.k1.sink.serializer.appendNewline = false
 
-Avro Event Serializer
-~~~~~~~~~~~~~~~~~~~~~
+"Flume Event" Avro Event Serializer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Alias: ``avro_event``. This interceptor serializes Flume events into an Avro
-container file. The schema used is the same schema used for Flume events
-in the Avro RPC mechanism. This serializers inherits from the
-``AbstractAvroEventSerializer`` class. Configuration options are as follows:
+Alias: ``avro_event``.
+
+This interceptor serializes Flume events into an Avro container file. The schema used is the same schema used for
+Flume events in the Avro RPC mechanism.
+
+This serializer inherits from the ``AbstractAvroEventSerializer`` class.
+
+Configuration options are as follows:
 
 ==========================  ================  ===========================================================================
 Property Name               Default           Description
@@ -3262,6 +3266,43 @@ Example for agent named a1:
   a1.sinks.k1.hdfs.path = /flume/events/%y-%m-%d/%H%M/%S
   a1.sinks.k1.serializer = avro_event
   a1.sinks.k1.serializer.compressionCodec = snappy
+
+Avro Event Serializer
+~~~~~~~~~~~~~~~~~~~~~
+
+Alias: This serializer does not have an alias, and must be specified using the fully-qualified class name class name.
+
+This serializes Flume events into an Avro container file like the "Flume Event" Avro Event Serializer, however the
+record schema is configurable. The record schema may be specified either as a Flume configuration property or passed in an event header.
+
+To pass the record schema as part of the Flume configuration, use the property ``schemaURL`` as listed below.
+
+To pass the record schema in an event header, specify either the event header ``flume.avro.schema.literal``
+containing a JSON-format representation of the schema or ``flume.avro.schema.url`` with a URL where
+the schema may be found (``hdfs:/...`` URIs are supported).
+
+This serializer inherits from the ``AbstractAvroEventSerializer`` class.
+
+Configuration options are as follows:
+
+==========================  ================  ===========================================================================
+Property Name               Default           Description
+==========================  ================  ===========================================================================
+syncIntervalBytes           2048000           Avro sync interval, in approximate bytes.
+compressionCodec            null              Avro compression codec. For supported codecs, see Avro's CodecFactory docs.
+schemaURL                   null              Avro schema URL. Schemas specified in the header ovverride this option.
+==========================  ================  ===========================================================================
+
+Example for agent named a1:
+
+.. code-block:: properties
+
+  a1.sinks.k1.type = hdfs
+  a1.sinks.k1.channel = c1
+  a1.sinks.k1.hdfs.path = /flume/events/%y-%m-%d/%H%M/%S
+  a1.sinks.k1.serializer = org.apache.flume.sink.hdfs.AvroEventSerializer$Builder
+  a1.sinks.k1.serializer.compressionCodec = snappy
+  a1.sinks.k1.serializer.schemaURL = hdfs://namenode/path/to/schema.avsc
 
 
 Flume Interceptors
