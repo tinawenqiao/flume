@@ -42,7 +42,7 @@ import java.util.List;
 
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants
-        .FILE_GROUPS_PREFIX;
+                  .FILE_GROUPS_PREFIX;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
