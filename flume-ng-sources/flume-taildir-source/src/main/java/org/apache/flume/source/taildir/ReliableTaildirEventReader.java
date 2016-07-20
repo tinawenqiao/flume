@@ -198,15 +198,14 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     }
 
     Map<String, String> headers = currentFile.getHeaders();
-    if (headers != null && !headers.isEmpty()) {
+    if (annotateFileName || (headers != null && !headers.isEmpty())) {
       for (Event event : events) {
-        event.getHeaders().putAll(headers);
-      }
-    }
-    if (annotateFileName) {
-      String filename = currentFile.getPath();
-      for (Event event : events) {
-        event.getHeaders().put(fileNameHeader, filename);
+        if (headers != null && !headers.isEmpty()) {
+          event.getHeaders().putAll(headers);
+        }
+        if (annotateFileName) {
+          event.getHeaders().put(fileNameHeader, currentFile.getPath());
+        }
       }
     }
     committed = false;
