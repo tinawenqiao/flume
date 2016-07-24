@@ -79,10 +79,23 @@ public class TestTaildirSource {
 
   @After
   public void tearDown() {
-    for (File f : tmpDir.listFiles()) {
-      f.delete();
-    }
+    deleteFiles(tmpDir);
     tmpDir.delete();
+  }
+
+  /**
+   * Helper method to recursively clean up testing directory
+   * @param directory the directory to clean up
+   */
+  private void deleteFiles(File directory) {
+    for (File f : directory.listFiles()) {
+      if (f.isDirectory()) {
+        deleteFiles(f);
+        f.delete();
+      } else {
+        f.delete();
+      }
+    }
   }
 
   @Test
@@ -128,6 +141,100 @@ public class TestTaildirSource {
     assertTrue(out.contains("b.log"));
     assertTrue(out.contains("c.log.yyyy-MM-01"));
     assertTrue(out.contains("c.log.yyyy-MM-02"));
+  }
+
+  @Test
+  public void testWildcardsDirFiltering() throws IOException {
+    File f1 = new File(tmpDir.getAbsolutePath()+"/fg1/dir1/subdir/file1.txt");
+    Files.createParentDirs(f1);
+    Files.write("file1\n", f1, Charsets.UTF_8);
+    File f2 = new File(tmpDir.getAbsolutePath()+"/fg1/dir2/subdir/file2.txt");
+    Files.createParentDirs(f2);
+    Files.write("file2\n", f2, Charsets.UTF_8);
+    File f3 = new File(tmpDir.getAbsolutePath()+"/fg1/dir3/file3.txt");
+    Files.createParentDirs(f3);
+    Files.write("file3\n", f3, Charsets.UTF_8);
+
+    File f4 = new File(tmpDir.getAbsolutePath()+"/fg2/dir4/file4.txt");
+    Files.createParentDirs(f4);
+    Files.write("file4\n", f4, Charsets.UTF_8);
+    File f5 = new File(tmpDir.getAbsolutePath()+"/fg2/dir5/file5.txt");
+    Files.createParentDirs(f5);
+    Files.write("file5\n", f5, Charsets.UTF_8);
+    File f6 = new File(tmpDir.getAbsolutePath()+"/fg2/dir66/file66.txt");
+    Files.createParentDirs(f6);
+    Files.write("file66\n", f6, Charsets.UTF_8);
+
+    File f7 = new File(tmpDir.getAbsolutePath()+"/fg3/dir7/file7.txt");
+    Files.createParentDirs(f7);
+    Files.write("file7\n", f7, Charsets.UTF_8);
+    File f8 = new File(tmpDir.getAbsolutePath()+"/fg3/dir8/file8.txt");
+    Files.createParentDirs(f8);
+    Files.write("file8\n", f8, Charsets.UTF_8);
+    File f9 = new File(tmpDir.getAbsolutePath()+"/fg3/dir9/file9.txt");
+    Files.createParentDirs(f9);
+    Files.write("file9\n", f9, Charsets.UTF_8);
+
+    File f10 = new File(tmpDir.getAbsolutePath()+"/fg4/dir10/file10.txt");
+    Files.createParentDirs(f10);
+    Files.write("file10\n", f10, Charsets.UTF_8);
+    File f11 = new File(tmpDir.getAbsolutePath()+"/fg4/dir11/file11.txt");
+    Files.createParentDirs(f11);
+    Files.write("file11\n", f11, Charsets.UTF_8);
+    File f12 = new File(tmpDir.getAbsolutePath()+"/fg4/dir12/file12.txt");
+    Files.createParentDirs(f12);
+    Files.write("file12\n", f12, Charsets.UTF_8);
+
+    File f13 = new File(tmpDir.getAbsolutePath()+"/fg5/dir13/file13.txt");
+    Files.createParentDirs(f13);
+    Files.write("file13\n", f13, Charsets.UTF_8);
+    File f14 = new File(tmpDir.getAbsolutePath()+"/fg5/dir14/file14.txt");
+    Files.createParentDirs(f14);
+    Files.write("file14\n", f14, Charsets.UTF_8);
+    File f15 = new File(tmpDir.getAbsolutePath()+"/fg5/dir15/subdir15/file15.txt");
+    Files.createParentDirs(f15);
+    Files.write("file15\n", f15, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "fg1 fg2 fg3 fg4 fg5");
+    context.put(FILE_GROUPS_PREFIX + "fg1", tmpDir.getAbsolutePath() + "/fg1/*/subdir/file.*");
+    context.put(FILE_GROUPS_PREFIX + "fg2", tmpDir.getAbsolutePath() + "/fg2/dir?/file.*");
+    context.put(FILE_GROUPS_PREFIX + "fg3", tmpDir.getAbsolutePath() + "/fg3/dir[78]/file.*");
+    context.put(FILE_GROUPS_PREFIX + "fg4", tmpDir.getAbsolutePath() + "/fg4/dir{10,12}/file.*");
+    context.put(FILE_GROUPS_PREFIX + "fg5", tmpDir.getAbsolutePath() + "/fg5/**/file.*");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int i = 0; i < 15; i++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(11, out.size());
+    assertTrue(out.contains("file1"));
+    assertTrue(out.contains("file2"));
+    assertFalse(out.contains("file3"));
+    assertTrue(out.contains("file4"));
+    assertTrue(out.contains("file5"));
+    assertFalse(out.contains("file66"));
+    assertTrue(out.contains("file7"));
+    assertTrue(out.contains("file8"));
+    assertFalse(out.contains("file9"));
+    assertTrue(out.contains("file10"));
+    assertFalse(out.contains("file11"));
+    assertTrue(out.contains("file12"));
+    assertTrue(out.contains("file13"));
+    assertTrue(out.contains("file14"));
+    assertTrue(out.contains("file15"));
   }
 
   @Test

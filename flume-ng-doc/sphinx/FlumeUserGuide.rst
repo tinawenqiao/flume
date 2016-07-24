@@ -1170,7 +1170,7 @@ Property Name                       Default                        Description
 **channels**                        --
 **type**                            --                             The component type name, needs to be ``TAILDIR``.
 **filegroups**                      --                             Space-separated list of file groups. Each file group indicates a set of files to be tailed.
-**filegroups.<filegroupName>**      --                             Absolute path of the file group. Regular expression (and not file system patterns) can be used for filename only.
+**filegroups.<filegroupName>**      --                             Absolute path of the file group. Regular expression (and not file system patterns) can be used for filename only. Wildcards("*?[{") are allowed in directory name.
 positionFile                        ~/.flume/taildir_position.json File in JSON format to record the inode, the absolute path and the last position of each tailing file.
 headers.<filegroupName>.<headerKey> --                             Header value which is the set with header key. Multiple headers can be specified for one file group.
 byteOffsetHeader                    false                          Whether to add the byte offset of a tailed line to a header called 'byteoffset'.
@@ -1200,7 +1200,7 @@ Example for agent named a1:
   a1.sources.r1.filegroups = f1 f2
   a1.sources.r1.filegroups.f1 = /var/log/test1/example.log
   a1.sources.r1.headers.f1.headerKey1 = value1
-  a1.sources.r1.filegroups.f2 = /var/log/test2/.*log.*
+  a1.sources.r1.filegroups.f2 = /var/*/test2/.*log.*
   a1.sources.r1.headers.f2.headerKey1 = value2
   a1.sources.r1.headers.f2.headerKey2 = value2-2
   a1.sources.r1.fileHeader = true
