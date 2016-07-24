@@ -28,12 +28,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.PathMatcher;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.FileVisitResult;
+import java.nio.file.SimpleFileVisitor;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -78,8 +81,6 @@ public class TaildirMatcher {
 
   // directory monitored for changes
   private final File parentDir;
-  // cached instance for filtering files based on filePattern
-  private final DirectoryStream.Filter<Path> fileFilter;
 
   // system time in milliseconds, stores the last modification time of the
   // parent directory seen by the last check, rounded to seconds
@@ -105,8 +106,7 @@ public class TaildirMatcher {
    * An instance of this class is created for each fileGroup
    *
    * @param fileGroup arbitrary name of the group given by the config
-   * @param filePattern parent directory plus regex pattern. No wildcards are allowed in directory
-   *                    name
+   * @param filePattern parent directory plus regex pattern. Wildcards are allowed in directory name
    * @param cachePatternMatching default true, recommended in every setup especially with huge
    *                             parent directories. Don't set when local system clock is not used
    *                             for stamping mtime (eg: remote filesystems)
@@ -120,16 +120,8 @@ public class TaildirMatcher {
 
     // calculate final members
     File f = new File(filePattern);
-    this.parentDir = f.getParentFile();
-    String regex = f.getName();
-    final PathMatcher matcher = FS.getPathMatcher("regex:" + regex);
-    this.fileFilter = new DirectoryStream.Filter<Path>() {
-      @Override
-      public boolean accept(Path entry) throws IOException {
-        return matcher.matches(entry.getFileName()) && !Files.isDirectory(entry);
-      }
-    };
-
+    String parentPath = findWildcards(f.getParentFile().toString());
+    this.parentDir = new File(parentPath);
     // sanity check
     Preconditions.checkState(parentDir.exists(),
         "Directory does not exist: " + parentDir.getAbsolutePath());
@@ -145,7 +137,7 @@ public class TaildirMatcher {
    * return the value stored in {@linkplain #lastMatchedFiles}.
    * Parentdir is allowed to be a symbolic link.
    * <p></p>
-   * Files returned by this call are weakly consistent (see {@link DirectoryStream}).
+   * Files returned by this call are weakly consistent (see {@link SimpleFileVisitor}).
    * It does not freeze the directory while iterating,
    * so it may (or may not) reflect updates to the directory that occur during the call,
    * In which case next call
@@ -204,10 +196,10 @@ public class TaildirMatcher {
 
   /**
    * Provides the actual files within the parentDir which
-   * files are matching the regex pattern. Each invocation uses {@link DirectoryStream}
+   * files are matching the regex pattern. Each invocation uses {@link SimpleFileVisitor}
    * to identify matching files.
    *
-   * Files returned by this call are weakly consistent (see {@link DirectoryStream}).
+   * Files returned by this call are weakly consistent (see {@link SimpleFileVisitor}).
    * It does not freeze the directory while iterating, so it may (or may not) reflect updates
    * to the directory that occur during the call. In which case next call will return those files.
    *
@@ -215,20 +207,62 @@ public class TaildirMatcher {
    * If nothing matches then returns an empty list. If I/O issue occurred then returns the list
    * collected to the point when exception was thrown.
    *
-   * @see DirectoryStream
-   * @see DirectoryStream.Filter
+   * @see SimpleFileVisitor
    */
   private List<File> getMatchingFilesNoCache() {
-    List<File> result = Lists.newArrayList();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(parentDir.toPath(), fileFilter)) {
-      for (Path entry : stream) {
-        result.add(entry.toFile());
-      }
+    final List<File> result = Lists.newArrayList();
+    try {
+      Files.walkFileTree(Paths.get(parentDir.toString()), new SimpleFileVisitor<Path>() {
+        PathMatcher dirMatcher = FS.getPathMatcher("glob:" + (new File(filePattern).getParent()));
+        PathMatcher fileNameMatcher = FS.getPathMatcher("regex:" +
+                (new File(filePattern).getName()));
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                throws IOException {
+          return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file,
+                                         BasicFileAttributes attrs) throws IOException {
+          if (dirMatcher.matches(file.getParent()) && fileNameMatcher.matches(file.getFileName())) {
+            result.add(file.toFile());
+          }
+          return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path file, IOException exc)
+                throws IOException {
+          return FileVisitResult.CONTINUE;
+        }
+      });
     } catch (IOException e) {
       logger.error("I/O exception occurred while listing parent directory. " +
                    "Files already matched will be returned. " + parentDir.toPath(), e);
     }
     return result;
+  }
+
+  private static String findWildcards(String path) {
+    int i = 0;
+    int index = path.length();
+    boolean findWildCards = false;
+    while (i<path.length()) {
+      if ("*?[{".indexOf(path.charAt(i)) != -1) {
+        if ((i==0) || (i>=1 && path.charAt(i-1)!='\\')) {
+          findWildCards = true;
+          break;
+        }
+      }
+      i++;
+    }
+    if (findWildCards == true) {
+      index = path.substring(0, i).lastIndexOf('/');
+      if (index <= 0) {
+        return "/";
+      }
+    }
+    return path.substring(0, index);
   }
 
   /**
