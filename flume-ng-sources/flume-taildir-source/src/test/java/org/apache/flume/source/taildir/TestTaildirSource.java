@@ -238,6 +238,59 @@ public class TestTaildirSource {
   }
 
   @Test
+  public void testWildcardsDirFilteringCache() throws IOException, InterruptedException {
+    //first iteration everything is working as expected
+    File f1 = new File(tmpDir.getAbsolutePath() + "/fg1/dir1/file1.txt");
+    Files.createParentDirs(f1);
+    Files.write("file1\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "fg1");
+    context.put(FILE_GROUPS_PREFIX + "fg1", tmpDir.getAbsolutePath() + "/fg1/*/file.*");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int i = 0; i < 2; i++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    // empty iterations simulating that time is passing by
+    Thread.sleep(1000);
+    source.process();
+    Thread.sleep(1000);
+
+    //file was created after a while it should be picked up as well
+    File f2 = new File(tmpDir.getAbsolutePath() + "/fg1/dir1/file2.txt");
+    Files.write("file2\n", f2, Charsets.UTF_8);
+
+    source.process();
+    txn = channel.getTransaction();
+    txn.begin();
+    for (int i = 0; i < 2; i++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(2, out.size()); //fails as file2.txt won't appear in the channel ever
+    assertTrue(out.contains("file1"));
+    assertTrue(out.contains("file2"));
+  }
+
+  @Test
   public void testHeaderMapping() throws IOException {
     File f1 = new File(tmpDir, "file1");
     File f2 = new File(tmpDir, "file2");
@@ -424,56 +477,4 @@ public class TestTaildirSource {
             e.getHeaders().get("path"));
   }
 
-  @Test
-  public void testWildcardsDirFilteringCache() throws IOException, InterruptedException {
-    //first iteration everything is working as expected
-    File f1 = new File(tmpDir.getAbsolutePath() + "/fg1/dir1/file1.txt");
-    Files.createParentDirs(f1);
-    Files.write("file1\n", f1, Charsets.UTF_8);
-
-    Context context = new Context();
-    context.put(POSITION_FILE, posFilePath);
-    context.put(FILE_GROUPS, "fg1");
-    context.put(FILE_GROUPS_PREFIX + "fg1", tmpDir.getAbsolutePath() + "/fg1/*/file.*");
-
-    Configurables.configure(source, context);
-    source.start();
-    source.process();
-    Transaction txn = channel.getTransaction();
-    txn.begin();
-    List<String> out = Lists.newArrayList();
-    for (int i = 0; i < 2; i++) {
-      Event e = channel.take();
-      if (e != null) {
-        out.add(TestTaildirEventReader.bodyAsString(e));
-      }
-    }
-    txn.commit();
-    txn.close();
-
-    // empty iterations simulating that time is passing by
-    Thread.sleep(1000);
-    source.process();
-    Thread.sleep(1000);
-
-    //file was created after a while it should be picked up as well
-    File f2 = new File(tmpDir.getAbsolutePath() + "/fg1/dir1/file2.txt");
-    Files.write("file2\n", f2, Charsets.UTF_8);
-
-    source.process();
-    txn = channel.getTransaction();
-    txn.begin();
-    for (int i = 0; i < 2; i++) {
-      Event e = channel.take();
-      if (e != null) {
-        out.add(TestTaildirEventReader.bodyAsString(e));
-      }
-    }
-    txn.commit();
-    txn.close();
-
-    assertEquals(2, out.size()); //fails as file2.txt won't appear in the channel ever
-    assertTrue(out.contains("file1"));
-    assertTrue(out.contains("file2"));
-  }
 }
