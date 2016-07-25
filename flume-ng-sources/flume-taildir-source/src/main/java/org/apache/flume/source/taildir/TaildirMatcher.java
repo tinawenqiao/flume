@@ -116,11 +116,15 @@ public class TaildirMatcher {
     // store whatever came from configuration
     this.fileGroup = fileGroup;
     this.filePattern = filePattern;
-    this.cachePatternMatching = cachePatternMatching;
 
     // calculate final members
     File f = new File(filePattern);
     String parentPath = findWildcards(f.getParentFile().toString());
+    if (!parentPath.equals(f.getParentFile().toString())) {
+      this.cachePatternMatching = false;
+    } else {
+      this.cachePatternMatching = cachePatternMatching;
+    }
     this.parentDir = new File(parentPath);
     // sanity check
     Preconditions.checkState(parentDir.exists(),
