@@ -119,9 +119,14 @@ public class TaildirMatcher {
 
     // calculate final members
     File f = new File(filePattern);
-    String parentPath = findWildcards(f.getParentFile().toString());
+    String parentPath = trimPathBeforeFirstWildcard(f.getParentFile().toString());
+
+    // Config cachePatternMatching is forced set to be false when fileGroup has globs in directory
+    // name.
     if (!parentPath.equals(f.getParentFile().toString())) {
       this.cachePatternMatching = false;
+      logger.info("Config cachePatternMatching is forced to be false when fileGroup has globs " +
+              "in directory name.");
     } else {
       this.cachePatternMatching = cachePatternMatching;
     }
@@ -220,47 +225,44 @@ public class TaildirMatcher {
         PathMatcher dirMatcher = FS.getPathMatcher("glob:" + (new File(filePattern).getParent()));
         PathMatcher fileNameMatcher = FS.getPathMatcher("regex:" +
                 (new File(filePattern).getName()));
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                throws IOException {
-          return FileVisitResult.CONTINUE;
-        }
-
         @Override
         public FileVisitResult visitFile(Path file,
-                                         BasicFileAttributes attrs) throws IOException {
+                                         BasicFileAttributes attrs) {
           if (dirMatcher.matches(file.getParent()) && fileNameMatcher.matches(file.getFileName())) {
             result.add(file.toFile());
           }
-          return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path file, IOException exc)
-                throws IOException {
           return FileVisitResult.CONTINUE;
         }
       });
     } catch (IOException e) {
       logger.error("I/O exception occurred while listing parent directory. " +
                    "Files already matched will be returned. " + parentDir.toPath(), e);
+    } catch (IllegalArgumentException e) {
+      logger.error("Filegroup Pattern (" + getFileGroup() + "=" + filePattern + ") Is Illegal.", e);
+
     }
     return result;
   }
 
-  private static String findWildcards(String path) {
+  /**
+   * Trim the parent directory and return the top-level directory before the first wildcard appears.
+   * @param path parent directory. Wildcards are allowed in parent directory name.
+   * @return Top-level directory before the first wildcard appears.
+   */
+  String trimPathBeforeFirstWildcard(String path) {
     int i = 0;
     int index = path.length();
     boolean findWildCards = false;
-    while (i<path.length()) {
+    while (i < path.length()) {
       if ("*?[{".indexOf(path.charAt(i)) != -1) {
-        if ((i==0) || (i>=1 && path.charAt(i-1)!='\\')) {
+        if ((i == 0) || (i >= 1 && path.charAt(i - 1) != '\\')) {
           findWildCards = true;
           break;
         }
       }
       i++;
     }
-    if (findWildCards == true) {
+    if (findWildCards) {
       index = path.substring(0, i).lastIndexOf('/');
       if (index <= 0) {
         return "/";
@@ -319,6 +321,10 @@ public class TaildirMatcher {
 
   public String getFileGroup() {
     return fileGroup;
+  }
+
+  public boolean getCachePatternMatching() {
+    return cachePatternMatching;
   }
 
 }

@@ -137,6 +137,46 @@ public class TestTaildirMatcher {
   }
 
   @Test
+  public void getMatchingFilesDirHasWildcards() throws Exception {
+    new File(tmpDir, "recursiveDir").mkdir();
+    new File(tmpDir + File.separator + "recursiveDir", "innerFile0").createNewFile();
+
+    TaildirMatcher tm = new TaildirMatcher("f1",
+            tmpDir.getAbsolutePath() + File.separator + "*/innerFile.*",
+            isCachingNeeded);
+    List<String> files = filesToNames(tm.getMatchingFiles());
+    //Cong
+    assertFalse(tm.getCachePatternMatching());
+    assertEquals(1, files.size());
+    assertTrue(files.contains("innerFile0"));
+
+    /*
+    append("file1");
+    files = filesToNames(tm.getMatchingFiles());
+    assertEquals(msgAfterNewFileCreated, 2, files.size());
+    assertTrue(msgAfterNewFileCreated, files.contains("file0"));
+    assertTrue(msgAfterNewFileCreated, files.contains("file1"));
+
+    append("file2");
+    append("file3");
+    files = filesToNames(tm.getMatchingFiles());
+    assertEquals(msgAfterAppend, 4, files.size());
+    assertTrue(msgAfterAppend, files.contains("file0"));
+    assertTrue(msgAfterAppend, files.contains("file1"));
+    assertTrue(msgAfterAppend, files.contains("file2"));
+    assertTrue(msgAfterAppend, files.contains("file3"));
+
+    this.files.get("file0").delete();
+    files = filesToNames(tm.getMatchingFiles());
+    assertEquals(msgAfterDelete, 3, files.size());
+    assertFalse(msgAfterDelete, files.contains("file0"));
+    assertTrue(msgNoChange, files.contains("file1"));
+    assertTrue(msgNoChange, files.contains("file2"));
+    assertTrue(msgNoChange, files.contains("file3"));
+    */
+  }
+
+  @Test
   public void getMatchingFilesNoCache() throws Exception {
     append("file0");
     append("file1");
@@ -247,4 +287,51 @@ public class TestTaildirMatcher {
                files2.contains("c.log.yyyy.MM-02"));
   }
 
+  @Test
+  public void trimPathBeforeFirstWildcard() {
+    TaildirMatcher tm = new TaildirMatcher("fg", tmpDir.getAbsolutePath() + File.separator + ".*",
+            isCachingNeeded);
+
+    String parentPath0 = "/dir/subdira/subdirb/subdirc";
+    String trimParentPath0 = tm.trimPathBeforeFirstWildcard(parentPath0);
+
+    String parentPath1 = "/dir/subdira/*/subdirb";
+    String trimParentPath1 = tm.trimPathBeforeFirstWildcard(parentPath1);
+
+    String parentPath2 = "/dir/subdira/*/subdirb/*/subdirc";
+    String trimParentPath2 = tm.trimPathBeforeFirstWildcard(parentPath2);
+
+    //Add escape character before *
+    String parentPath3 = "/dir/subdira/\\*/subdirb/*/subdirc";
+    String trimParentPath3 = tm.trimPathBeforeFirstWildcard(parentPath3);
+
+    String parentPath4 = "/*/subdira/subdirb/subdirc";
+    String trimParentPath4 = tm.trimPathBeforeFirstWildcard(parentPath4);
+
+    String parentPath5 = "**/subdira/subdirb/subdirc";
+    String trimParentPath5 = tm.trimPathBeforeFirstWildcard(parentPath5);
+
+    String parentPath6 = "/dir/subdira/subdirb/s?b/subdirc";
+    String trimParentPath6 = tm.trimPathBeforeFirstWildcard(parentPath6);
+
+    String parentPath7 = "/dir/subdira/subdirb/sub[123]/subdirc";
+    String trimParentPath7 = tm.trimPathBeforeFirstWildcard(parentPath7);
+
+    String parentPath8 = "/dir/subdira/subdirb/sub{b1, b2, b3}/subdirc";
+    String trimParentPath8 = tm.trimPathBeforeFirstWildcard(parentPath8);
+
+    String parentPath9 = "/dir/subdira/subd?rb/sub{b1, b2, b3}/subdirc";
+    String trimParentPath9 = tm.trimPathBeforeFirstWildcard(parentPath9);
+
+    assertEquals(trimParentPath0, "/dir/subdira/subdirb/subdirc");
+    assertEquals(trimParentPath1, "/dir/subdira");
+    assertEquals(trimParentPath2, "/dir/subdira");
+    assertEquals(trimParentPath3, "/dir/subdira/\\*/subdirb");
+    assertEquals(trimParentPath4, "/");
+    assertEquals(trimParentPath5, "/");
+    assertEquals(trimParentPath6, "/dir/subdira/subdirb");
+    assertEquals(trimParentPath7, "/dir/subdira/subdirb");
+    assertEquals(trimParentPath8, "/dir/subdira/subdirb");
+    assertEquals(trimParentPath9, "/dir/subdira");
+  }
 }

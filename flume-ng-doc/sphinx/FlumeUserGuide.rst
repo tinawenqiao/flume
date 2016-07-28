@@ -1170,7 +1170,8 @@ Property Name                       Default                        Description
 **channels**                        --
 **type**                            --                             The component type name, needs to be ``TAILDIR``.
 **filegroups**                      --                             Space-separated list of file groups. Each file group indicates a set of files to be tailed.
-**filegroups.<filegroupName>**      --                             Absolute path of the file group. Regular expression (and not file system patterns) can be used for filename only. Wildcards("*?[{") are allowed in directory name.
+**filegroups.<filegroupName>**      --                             Absolute path of the file group. Regular expression (and not file system patterns) can be used for filename only.
+                                                                   Wildcards(see: -> link to `getPathMatcher(String syntaxAndPattern) <https://docs.oracle.com/javase/7/docs/api/java/nio/file/FileSystem.html#getPathMatcher(java.lang.String)>`_) are allowed in directory name.
 positionFile                        ~/.flume/taildir_position.json File in JSON format to record the inode, the absolute path and the last position of each tailing file.
 headers.<filegroupName>.<headerKey> --                             Header value which is the set with header key. Multiple headers can be specified for one file group.
 byteOffsetHeader                    false                          Whether to add the byte offset of a tailed line to a header called 'byteoffset'.
