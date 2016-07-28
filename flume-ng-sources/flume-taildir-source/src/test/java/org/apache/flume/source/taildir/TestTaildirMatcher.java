@@ -145,35 +145,18 @@ public class TestTaildirMatcher {
             tmpDir.getAbsolutePath() + File.separator + "*/innerFile.*",
             isCachingNeeded);
     List<String> files = filesToNames(tm.getMatchingFiles());
-    //Cong
+
+    //Config cachePatternMatching is forced set to be false when fileGroup has globs in directory
+    // name.
     assertFalse(tm.getCachePatternMatching());
     assertEquals(1, files.size());
     assertTrue(files.contains("innerFile0"));
 
-    /*
-    append("file1");
+    new File(tmpDir + File.separator + "recursiveDir", "innerFile1").createNewFile();
     files = filesToNames(tm.getMatchingFiles());
-    assertEquals(msgAfterNewFileCreated, 2, files.size());
-    assertTrue(msgAfterNewFileCreated, files.contains("file0"));
-    assertTrue(msgAfterNewFileCreated, files.contains("file1"));
-
-    append("file2");
-    append("file3");
-    files = filesToNames(tm.getMatchingFiles());
-    assertEquals(msgAfterAppend, 4, files.size());
-    assertTrue(msgAfterAppend, files.contains("file0"));
-    assertTrue(msgAfterAppend, files.contains("file1"));
-    assertTrue(msgAfterAppend, files.contains("file2"));
-    assertTrue(msgAfterAppend, files.contains("file3"));
-
-    this.files.get("file0").delete();
-    files = filesToNames(tm.getMatchingFiles());
-    assertEquals(msgAfterDelete, 3, files.size());
-    assertFalse(msgAfterDelete, files.contains("file0"));
-    assertTrue(msgNoChange, files.contains("file1"));
-    assertTrue(msgNoChange, files.contains("file2"));
-    assertTrue(msgNoChange, files.contains("file3"));
-    */
+    assertEquals(2, files.size());
+    assertTrue(files.contains("innerFile0"));
+    assertTrue(files.contains("innerFile1"));
   }
 
   @Test
