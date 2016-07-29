@@ -122,13 +122,11 @@ public class TaildirMatcher {
     File f = new File(filePattern);
     String parentPath = trimPathBeforeFirstWildcard(f.getParentFile().toString());
 
-    // Config cachePatternMatching is forced set to be false when fileGroup has globs in directory
-    // name.
-    if (!parentPath.equals(f.getParentFile().toString())) {
-      if (cachePatternMatching) {
-        logger.info("Config cachePatternMatching is forced to be false when fileGroup has globs " +
-                "in directory name.");
-      }
+    // Config cachePatternMatching will be overwritten to false when there are globs in the
+    // filegroup's directory name.
+    if (cachePatternMatching && !parentPath.equals(f.getParentFile().toString())) {
+      logger.info("Config cachePatternMatching is forced to be false when fileGroup has globs " +
+              "in directory name.");
       this.cachePatternMatching = false;
     } else {
       this.cachePatternMatching = cachePatternMatching;
