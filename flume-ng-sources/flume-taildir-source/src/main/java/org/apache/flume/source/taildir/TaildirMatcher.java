@@ -19,6 +19,7 @@
 
 package org.apache.flume.source.taildir;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.flume.annotations.InterfaceAudience;
@@ -124,9 +125,11 @@ public class TaildirMatcher {
     // Config cachePatternMatching is forced set to be false when fileGroup has globs in directory
     // name.
     if (!parentPath.equals(f.getParentFile().toString())) {
+      if (cachePatternMatching) {
+        logger.info("Config cachePatternMatching is forced to be false when fileGroup has globs " +
+                "in directory name.");
+      }
       this.cachePatternMatching = false;
-      logger.info("Config cachePatternMatching is forced to be false when fileGroup has globs " +
-              "in directory name.");
     } else {
       this.cachePatternMatching = cachePatternMatching;
     }
@@ -249,6 +252,7 @@ public class TaildirMatcher {
    * @param path parent directory. Wildcards are allowed in parent directory name.
    * @return Top-level directory before the first wildcard appears.
    */
+  @VisibleForTesting
   String trimPathBeforeFirstWildcard(String path) {
     int i = 0;
     int index = path.length();

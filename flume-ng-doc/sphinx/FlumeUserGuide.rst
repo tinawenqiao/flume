@@ -1184,6 +1184,7 @@ maxBackoffSleep                     5000                           The max time 
 cachePatternMatching                true                           Listing directories and applying the filename regex pattern may be time consuming for directories
                                                                    containing thousands of files. Caching the list of matching files can improve performance.
                                                                    The order in which files are consumed will also be cached.
+                                                                   CachePatternMatching will be overwritten to false when there are globs in the filegroup's directory name.
                                                                    Requires that the file system keeps track of modification times with at least a 1-second granularity.
 fileHeader                          false                          Whether to add a header storing the absolute path filename.
 fileHeaderKey                       file                           Header key to use when appending absolute path filename to event header.
