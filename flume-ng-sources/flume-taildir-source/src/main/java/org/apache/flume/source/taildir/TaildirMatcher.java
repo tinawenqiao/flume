@@ -37,6 +37,7 @@ import java.nio.file.Paths;
 import java.nio.file.PathMatcher;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.SimpleFileVisitor;
 import java.util.Collections;
 import java.util.Comparator;
@@ -147,13 +148,7 @@ public class TaildirMatcher {
    * return the value stored in {@linkplain #lastMatchedFiles}.
    * Parentdir is allowed to be a symbolic link.
    * <p></p>
-   * Files returned by this call are weakly consistent (see {@link SimpleFileVisitor}).
-   * It does not freeze the directory while iterating,
-   * so it may (or may not) reflect updates to the directory that occur during the call,
-   * In which case next call
-   * will return those files (as mtime is increasing it won't hit cache but trigger recalculation).
-   * It is guaranteed that invocation reflects every change which was observable at the time of
-   * invocation.
+   * Files returned by this call is a visitor of each file in a file tree (see {@link FileVisitor}).
    * <p></p>
    * Matching file list recalculation is triggered when caching was turned off or
    * if mtime is greater than the previously seen mtime
@@ -206,18 +201,16 @@ public class TaildirMatcher {
 
   /**
    * Provides the actual files within the parentDir which
-   * files are matching the regex pattern. Each invocation uses {@link SimpleFileVisitor}
+   * files are matching the regex pattern. Each invocation uses {@link FileVisitor}
    * to identify matching files.
    *
-   * Files returned by this call are weakly consistent (see {@link SimpleFileVisitor}).
-   * It does not freeze the directory while iterating, so it may (or may not) reflect updates
-   * to the directory that occur during the call. In which case next call will return those files.
+   * Files returned by this call is a visitor of each file in a file tree (see {@link FileVisitor}).
    *
    * @return List of files matching the pattern unsorted. No recursion. No directories.
    * If nothing matches then returns an empty list. If I/O issue occurred then returns the list
    * collected to the point when exception was thrown.
    *
-   * @see SimpleFileVisitor
+   * @see FileVisitor
    */
   private List<File> getMatchingFilesNoCache() {
     final List<File> result = Lists.newArrayList();
@@ -227,11 +220,15 @@ public class TaildirMatcher {
         PathMatcher fileNameMatcher = FS.getPathMatcher("regex:" +
                 (new File(filePattern).getName()));
         @Override
-        public FileVisitResult visitFile(Path file,
-                                         BasicFileAttributes attrs) {
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
           if (dirMatcher.matches(file.getParent()) && fileNameMatcher.matches(file.getFileName())) {
             result.add(file.toFile());
           }
+          return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path file, IOException exc) {
           return FileVisitResult.CONTINUE;
         }
       });
@@ -255,8 +252,9 @@ public class TaildirMatcher {
     int i = 0;
     int index = path.length();
     boolean findWildCards = false;
+    final String WILDCARDS = "*?[{";
     while (i < path.length()) {
-      if ("*?[{".indexOf(path.charAt(i)) != -1) {
+      if (WILDCARDS.indexOf(path.charAt(i)) != -1) {
         if ((i == 0) || (i >= 1 && path.charAt(i - 1) != '\\')) {
           findWildCards = true;
           break;
@@ -265,9 +263,9 @@ public class TaildirMatcher {
       i++;
     }
     if (findWildCards) {
-      index = path.substring(0, i).lastIndexOf('/');
+      index = path.substring(0, i).lastIndexOf(File.separator);
       if (index <= 0) {
-        return "/";
+        return File.separator;
       }
     }
     return path.substring(0, index);

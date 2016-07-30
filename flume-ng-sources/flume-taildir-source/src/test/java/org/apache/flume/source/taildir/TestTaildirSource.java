@@ -145,16 +145,7 @@ public class TestTaildirSource {
 
   /**
    * Test wildcards in filegroup directory name.
-   * '*' : character matches zero or more characters of a name component without crossing directory
-   *       boundaries.
-   * '**': characters matches zero or more characters crossing directory boundaries
-   * '?' : character matches exactly one character of a name component.
-   * '[]': characters are a bracket expression that match a single character of a name component
-   *       out of a set of characters.
-   * '{}': characters are a group of subpatterns, where the group matches if any subpattern in the
-   *       group matches. The "," character is used to separate the subpatterns.
-   *       Groups cannot be nested.
-   * '\\':  used to escape characters that would otherwise be interpreted as special characters.
+   * Glob patterns reference to {@link java.nio.file.FileSystem#getPathMatcher})
    * @throws IOException
    */
   @Test
