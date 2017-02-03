@@ -59,6 +59,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private boolean committed = true;
   private final boolean annotateFileName;
   private final String fileNameHeader;
+  private boolean multiline;
+  private String multilinePattern;
+  private String multilinePatternBelong;
+  private boolean multilinePatternMatched;
+  private long eventTimeoutSecs;
 
   /**
    * Create a ReliableTaildirEventReader to watch the given directory.
@@ -66,7 +71,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private ReliableTaildirEventReader(Map<String, String> filePaths,
       Table<String, String, String> headerTable, String positionFilePath,
       boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
-      boolean annotateFileName, String fileNameHeader) throws IOException {
+      boolean annotateFileName, String fileNameHeader,
+      boolean multiline, String multilinePattern,
+      String multilinePatternBelong, boolean multilinePatternMatched, long eventTimeoutSecs)
+          throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
     Preconditions.checkNotNull(positionFilePath);
@@ -89,6 +97,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.cachePatternMatching = cachePatternMatching;
     this.annotateFileName = annotateFileName;
     this.fileNameHeader = fileNameHeader;
+    this.multiline = multiline;
+    this.multilinePattern = multilinePattern;
+    this.multilinePatternBelong = multilinePatternBelong;
+    this.multilinePatternMatched = multilinePatternMatched;
+    this.eventTimeoutSecs = eventTimeoutSecs;
     updateTailFiles(skipToEnd);
 
     logger.info("Updating position from position file: " + positionFilePath);
@@ -192,6 +205,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       long lastPos = currentFile.getPos();
       currentFile.updateFilePos(lastPos);
     }
+    currentFile.setMultiline(multiline);
+    currentFile.setMultilinePattern(multilinePattern);
+    currentFile.setMultilinePatternBelong(multilinePatternBelong);
+    currentFile.setMultilinePatternMatched(multilinePatternMatched);
+    currentFile.setEventTimeoutSecs(eventTimeoutSecs);
     List<Event> events = currentFile.readEvents(numEvents, backoffWithoutNL, addByteOffset);
     if (events.isEmpty()) {
       return events;
@@ -301,6 +319,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
             TaildirSourceConfigurationConstants.DEFAULT_FILE_HEADER;
     private String fileNameHeader =
             TaildirSourceConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY;
+    private boolean multiline;
+    private String multilinePattern;
+    private String multilinePatternBelong;
+    private boolean multilinePatternMatched;
+    private long eventTimeoutSecs;
 
     public Builder filePaths(Map<String, String> filePaths) {
       this.filePaths = filePaths;
@@ -342,10 +365,38 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
+    public Builder multiline(boolean multiline) {
+      this.multiline = multiline;
+      return this;
+    }
+
+    public Builder multilinePattern(String multilinePattern) {
+      this.multilinePattern = multilinePattern;
+      return this;
+    }
+
+    public Builder multilinePatternBelong(String multilinePatternBelong) {
+      this.multilinePatternBelong = multilinePatternBelong;
+      return this;
+    }
+
+    public Builder multilinePatternMatched(boolean multilinePatternMatched) {
+      this.multilinePatternMatched = multilinePatternMatched;
+      return this;
+    }
+
+    public Builder eventTimeoutSecs(long eventTimeoutSecs) {
+      this.eventTimeoutSecs = eventTimeoutSecs;
+      return this;
+    }
+
     public ReliableTaildirEventReader build() throws IOException {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
                                             addByteOffset, cachePatternMatching,
-                                            annotateFileName, fileNameHeader);
+                                            annotateFileName, fileNameHeader,
+                                            multiline, multilinePattern,
+                                            multilinePatternBelong, multilinePatternMatched,
+                                            eventTimeoutSecs);
     }
   }
 

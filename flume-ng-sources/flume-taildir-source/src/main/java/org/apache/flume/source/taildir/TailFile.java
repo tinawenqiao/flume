@@ -22,6 +22,7 @@ package org.apache.flume.source.taildir;
 import com.google.common.collect.Lists;
 import org.apache.flume.Event;
 import org.apache.flume.event.EventBuilder;
+import org.apache.flume.interceptor.TimestampInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.BYTE_OFFSET_HEADER_KEY;
 
@@ -53,6 +56,12 @@ public class TailFile {
   private byte[] oldBuffer;
   private int bufferPos;
   private long lineReadPos;
+  private boolean multiline;
+  private String multilinePattern;
+  private String multilinePatternBelong;
+  private boolean multilinePatternMatched;
+  private long eventTimeoutSecs;
+  private Event bufferEvent;
 
   public TailFile(File file, Map<String, String> headers, long inode, long pos)
       throws IOException {
@@ -69,6 +78,7 @@ public class TailFile {
     this.headers = headers;
     this.oldBuffer = new byte[0];
     this.bufferPos = NEED_READING;
+    this.bufferEvent = null;
   }
 
   public RandomAccessFile getRaf() {
@@ -91,8 +101,21 @@ public class TailFile {
     return lastUpdated;
   }
 
-  public boolean needTail() {
+  public boolean isNeedTail() {
     return needTail;
+  }
+
+  public boolean isNeedFlushBufferEvent() {
+    if (bufferEvent != null) {
+      long now = System.currentTimeMillis();
+      long eventTime = Long.parseLong(
+              bufferEvent.getHeaders().get(TimestampInterceptor.Constants.TIMESTAMP));
+      System.out.println("++++++++++bufferEvent.time=" + eventTime +" now=" + now + " (now-eventTime)=" + (now-eventTime));
+      if ((now-eventTime) > eventTimeoutSecs*1000) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public Map<String, String> getHeaders() {
@@ -119,6 +142,26 @@ public class TailFile {
     this.lineReadPos = lineReadPos;
   }
 
+  public void setMultiline(boolean multiline) {
+    this.multiline = multiline;
+  }
+
+  public void setMultilinePattern(String multilinePattern) {
+    this.multilinePattern = multilinePattern;
+  }
+
+  public void setMultilinePatternBelong(String multilinePatternBelong) {
+    this.multilinePatternBelong = multilinePatternBelong;
+  }
+
+  public void setMultilinePatternMatched(boolean multilinePatternMatched) {
+    this.multilinePatternMatched = multilinePatternMatched;
+  }
+
+  public void setEventTimeoutSecs(long eventTimeoutSecs) {
+    this.eventTimeoutSecs = eventTimeoutSecs;
+  }
+
   public boolean updatePos(String path, long inode, long pos) throws IOException {
     if (this.inode == inode && this.path.equals(path)) {
       setPos(pos);
@@ -139,14 +182,112 @@ public class TailFile {
   public List<Event> readEvents(int numEvents, boolean backoffWithoutNL,
       boolean addByteOffset) throws IOException {
     List<Event> events = Lists.newLinkedList();
-    for (int i = 0; i < numEvents; i++) {
-      Event event = readEvent(backoffWithoutNL, addByteOffset);
-      if (event == null) {
-        break;
+    if (this.multiline) {
+      boolean match = this.multilinePatternMatched;
+      Pattern pattern = Pattern.compile(this.multilinePattern);
+      while (events.size() < numEvents) {
+        LineResult line = readLine();
+        if (line == null) {
+          break;
+        }
+        Event event = null;
+        //在上面readLine函数里加上长度判断,在这里加上超长后处理逻辑flush掉
+        switch (this.multilinePatternBelong) {
+          case "next":
+            event = readMultilineEventNext(line, match, pattern);
+            break;
+          case "previous":
+            event = readMultilineEventPre(line, match, pattern);
+          default:
+            break;
+        }
+        if (event != null) {
+          events.add(event);
+        }
       }
-      events.add(event);
+      if (isNeedFlushBufferEvent()) {
+        Event event = EventBuilder.withBody(bufferEvent.getBody());
+        events.add(event);
+        bufferEvent = null;
+      }
+    } else {
+      for (int i = 0; i < numEvents; i++) {
+        Event event = readEvent(backoffWithoutNL, addByteOffset);
+        if (event != null) {
+          events.add(event);
+        } else {
+          break;
+        }
+      }
     }
     return events;
+  }
+
+  private Event readMultilineEventPre(LineResult line, boolean match, Pattern pattern) throws IOException {
+    Event event = null;
+    Matcher m = pattern.matcher(new String(line.line));
+    boolean find = m.find();
+    match = (find&&match) || (!find&&!match);
+    if (match) {
+      byte[] mergedBytes = mergeEvent(line);
+      bufferEvent = EventBuilder.withBody(mergedBytes);
+      long now = System.currentTimeMillis();
+      bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
+      bufferEvent.getHeaders().put("multiline", "true");
+    } else {
+      if (bufferEvent != null) {
+        event = EventBuilder.withBody(bufferEvent.getBody());
+      }
+      bufferEvent = null;
+      bufferEvent = EventBuilder.withBody(toOriginBytes(line));
+      long now = System.currentTimeMillis();
+      bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
+    }
+
+    return event;
+  }
+
+  private Event readMultilineEventNext(LineResult line, boolean match, Pattern pattern) throws IOException {
+    Event event = null;
+    Matcher m = pattern.matcher(new String(line.line));
+    boolean find = m.find();
+    match = (find&&match) || (!find&&!match);
+    if (match) {
+      byte[] mergedBytes = mergeEvent(line);
+      bufferEvent = EventBuilder.withBody(mergedBytes);
+      long now = System.currentTimeMillis();
+      bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
+      bufferEvent.getHeaders().put("multiline", "true");
+    } else {
+      byte[] mergedBytes = mergeEvent(line);
+      event = EventBuilder.withBody(mergedBytes);
+      bufferEvent = null;
+    }
+
+    return event;
+  }
+
+  private byte[] mergeEvent(LineResult line) {
+    byte[] mergedBytes;
+    byte[] lineBytes = toOriginBytes(line);
+    if (bufferEvent != null) {
+      mergedBytes = concatByteArrays(bufferEvent.getBody(), 0, bufferEvent.getBody().length,
+              lineBytes, 0, lineBytes.length);
+    } else {
+      mergedBytes = lineBytes;
+    }
+    return mergedBytes;
+  }
+
+  private byte[] toOriginBytes(LineResult line) {
+    byte[] newByte = null;
+    if (line.lineSepInclude) {
+      newByte = new byte[line.line.length + 1];
+      System.arraycopy(line.line, 0, newByte, 0, line.line.length);
+      newByte[line.line.length] = BYTE_NL;
+      return newByte;
+    }
+    return line.line;
   }
 
   private Event readEvent(boolean backoffWithoutNL, boolean addByteOffset) throws IOException {

@@ -63,4 +63,32 @@ public class TaildirSourceConfigurationConstants {
   /** Whether to include absolute path filename in a header. */
   public static final String FILENAME_HEADER = "fileHeader";
   public static final boolean DEFAULT_FILE_HEADER = false;
+
+  /** Whether to support joining of multiline messages from a file into a single flume event. */
+  public static final String MULTILINE = "multiline";
+  public static final boolean DEFAULT_MULTILINE = false;
+
+  /** Regexp which matches the start or the end of an event consisting of multilines. */
+  public static final String MULTILINE_PATTERN = "multilinePattern";
+  public static final String DEFAULT_MULTILINE_PATTERN = "\\n";
+
+  /** Indicate the pattern belongs to the next or previous event.
+   * Value can be {'previous','next'}.
+   * */
+  public static final String MULTILINE_PATTERN_BELONG = "multilinePatternBelong";
+  public static final String DEFAULT_MULTILINE_PATTERN_BELONG = "next";
+
+  /** Whether to match the pattern. If 'false', a message not matching the pattern will be combined
+   * with the previous or the next line.
+   */
+  public static final String MULTILINE_PATTERN_MATCHED = "multilineMatched";
+  public static final boolean DEFAULT_MULTILINE_PATTERN_MATCHED = true;
+
+  /** Maximum time (ms) before an event automatically be flushed. */
+  public static final String EVENT_TIMEOUT_SECCONDS = "eventTimeoutSeconds";
+  public static final int DEFAULT_EVENT_TIMEOUT_SECCONDS = 5;
+
+  /** Whether to flush events at a regular interval. */
+  public static final String EVENT_PERIODIC_FLUSH = "eventPeriodicFlush";
+  public static final boolean DEFAULT_EVENT_PERIODIC_FLUSH = true;
 }

@@ -40,12 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_PREFIX;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER_KEY;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -315,5 +310,62 @@ public class TestTaildirSource {
     assertNotNull(e.getHeaders().get("path"));
     assertEquals(f1.getAbsolutePath(),
             e.getHeaders().get("path"));
+  }
+
+  @Test
+  public void testMultilineSetToTrue() throws IOException {
+    File f1 = new File(tmpDir, "a.log");
+    //File f2 = new File(tmpDir, "b.log");
+    //File f3 = new File(tmpDir, "c.log");
+    /*
+    Files.write("2016-05-17 00:12:06,713 [Thread-7] TRACE \n f1 \n 2016-05-18 00:12:06,714 [Thread-7] TRACE \n" +
+            " f1f1 \n" +
+            " f1f1f1", f1, Charsets.UTF_8);*/
+    Files.write("a.log\nf1\n2016-05-17 00:12:06,713 [Thread-7] TRACE \n f1 \n 2016-05-18 00:12:06,714 [Thread-7] TRACE \n" +
+            " f1f1 \n" +
+            " f1f1f1", f1, Charsets.UTF_8);
+    //Files.write(" 2016-05-19 00:12:06,713 [Thread-7] TRACE \n f2 \n f2f2\n2016-05-20 00:12:06,713 [Thread-7] TRACE\n ", f2, Charsets.UTF_8);
+    //Files.write("c.log\n", f3, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    // Tail a.log and b.log
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/[abc].log");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    //context.put(MULTILINE_PATTERN_BELONG, "next");
+    context.put(MULTILINE_PATTERN_BELONG, "previous");
+    context.put(MULTILINE_PATTERN_MATCHED, "true");
+
+    Configurables.configure(source, context);
+    source.start();
+    for (int i = 0; i<5; i++) {
+      source.process();
+      Transaction txn = channel.getTransaction();
+      txn.begin();
+      List<String> out = Lists.newArrayList();
+      for (int j=0; j<5; j++) {
+        System.out.println("j=" + j);
+        Event e = channel.take();
+        if (e != null) {
+          System.out.println("j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
+          out.add(TestTaildirEventReader.bodyAsString(e));
+        }
+      }
+      txn.commit();
+      txn.close();
+    }
+    /*
+    assertEquals(3, out.size());
+
+    assertTrue(out.get(0).equals("a.log\n"));
+    assertTrue(out.get(1).equals("\n2016-05-17 00:12:06,713 [Thread-7] TRACE \n" +
+            " f1 \n"));
+
+    assertTrue(out.get(2).equals(" 2016-05-19 00:12:06,713 [Thread-7] TRACE \n" +
+            " f2 \n" +
+            " f2f2"));
+            */
   }
 }
