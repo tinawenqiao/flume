@@ -86,6 +86,11 @@ public class TaildirSource extends AbstractSource implements
   private Long maxBackOffSleepInterval;
   private boolean fileHeader;
   private String fileHeaderKey;
+  private boolean multiline;
+  private String multilinePattern;
+  private String multilinePatternBelong;
+  private boolean multilinePatternMatched;
+  private long eventTimeoutSecs;
 
   @Override
   public synchronized void start() {
@@ -100,6 +105,11 @@ public class TaildirSource extends AbstractSource implements
           .cachePatternMatching(cachePatternMatching)
           .annotateFileName(fileHeader)
           .fileNameHeader(fileHeaderKey)
+          .multiline(multiline)
+          .multilinePattern(multilinePattern)
+          .multilinePatternBelong(multilinePatternBelong)
+          .multilinePatternMatched(multilinePatternMatched)
+          .eventTimeoutSecs(eventTimeoutSecs)
           .build();
     } catch (IOException e) {
       throw new FlumeException("Error instantiating ReliableTaildirEventReader", e);
@@ -184,6 +194,17 @@ public class TaildirSource extends AbstractSource implements
             DEFAULT_FILE_HEADER);
     fileHeaderKey = context.getString(FILENAME_HEADER_KEY,
             DEFAULT_FILENAME_HEADER_KEY);
+    multiline = context.getBoolean(MULTILINE, DEFAULT_MULTILINE);
+    multilinePattern = context.getString(MULTILINE_PATTERN, DEFAULT_MULTILINE_PATTERN);
+    multilinePatternBelong = context.getString(MULTILINE_PATTERN_BELONG,
+            DEFAULT_MULTILINE_PATTERN_BELONG);
+    Preconditions.checkState(multilinePatternBelong.equals("previous") ||
+            multilinePatternBelong.equals("next"),
+            "Config MultilinePatternBelong=" + multilinePatternBelong + " is invalid. Only" +
+                    " support 'previous' or 'next'");
+    multilinePatternMatched = context.getBoolean(MULTILINE_PATTERN_MATCHED,
+            DEFAULT_MULTILINE_PATTERN_MATCHED);
+    eventTimeoutSecs = context.getInteger(EVENT_TIMEOUT_SECCONDS, DEFAULT_EVENT_TIMEOUT_SECCONDS);
 
     if (sourceCounter == null) {
       sourceCounter = new SourceCounter(getName());
@@ -222,7 +243,7 @@ public class TaildirSource extends AbstractSource implements
       existingInodes.addAll(reader.updateTailFiles());
       for (long inode : existingInodes) {
         TailFile tf = reader.getTailFiles().get(inode);
-        if (tf.needTail()) {
+        if (tf.isNeedTail() || tf.isNeedFlushBufferEvent()) {
           tailFileProcess(tf, true);
         }
       }
