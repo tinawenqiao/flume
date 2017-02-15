@@ -90,7 +90,9 @@ public class TaildirSource extends AbstractSource implements
   private String multilinePattern;
   private String multilinePatternBelong;
   private boolean multilinePatternMatched;
-  private long eventTimeoutSecs;
+  private long multilineEventTimeoutSecs;
+  private int multilineMaxBytes;
+  private int multilineMaxLines;
 
   @Override
   public synchronized void start() {
@@ -109,7 +111,9 @@ public class TaildirSource extends AbstractSource implements
           .multilinePattern(multilinePattern)
           .multilinePatternBelong(multilinePatternBelong)
           .multilinePatternMatched(multilinePatternMatched)
-          .eventTimeoutSecs(eventTimeoutSecs)
+          .eventTimeoutSecs(multilineEventTimeoutSecs)
+          .multilineMaxBytes(multilineMaxBytes)
+          .multilineMaxLines(multilineMaxLines)
           .build();
     } catch (IOException e) {
       throw new FlumeException("Error instantiating ReliableTaildirEventReader", e);
@@ -204,7 +208,10 @@ public class TaildirSource extends AbstractSource implements
                     " support 'previous' or 'next'");
     multilinePatternMatched = context.getBoolean(MULTILINE_PATTERN_MATCHED,
             DEFAULT_MULTILINE_PATTERN_MATCHED);
-    eventTimeoutSecs = context.getInteger(EVENT_TIMEOUT_SECCONDS, DEFAULT_EVENT_TIMEOUT_SECCONDS);
+    multilineEventTimeoutSecs = context.getInteger(MULTILINE_EVENT_TIMEOUT_SECONDS,
+            DEFAULT_MULTILINE_EVENT_TIMEOUT_SECONDS);
+    multilineMaxBytes = context.getInteger(MULTILINE_MAX_BYTES, DEFAULT_MULTILINE_MAX_BYTES);
+    multilineMaxLines = context.getInteger(MULTILINE_MAX_LINES, DEFAULT_MULTILINE_MAX_LINES);
 
     if (sourceCounter == null) {
       sourceCounter = new SourceCounter(getName());

@@ -60,7 +60,9 @@ public class TailFile {
   private String multilinePattern;
   private String multilinePatternBelong;
   private boolean multilinePatternMatched;
-  private long eventTimeoutSecs;
+  private long multilineEventTimeoutSecs;
+  private int multilineMaxBytes;
+  private int multilineMaxLines;
   private Event bufferEvent;
 
   public TailFile(File file, Map<String, String> headers, long inode, long pos)
@@ -110,8 +112,8 @@ public class TailFile {
       long now = System.currentTimeMillis();
       long eventTime = Long.parseLong(
               bufferEvent.getHeaders().get(TimestampInterceptor.Constants.TIMESTAMP));
-      System.out.println("++++++++++bufferEvent.time=" + eventTime +" now=" + now + " (now-eventTime)=" + (now-eventTime));
-      if ((now-eventTime) > eventTimeoutSecs*1000) {
+      if (multilineEventTimeoutSecs > 0 && (now-eventTime) > multilineEventTimeoutSecs *1000) {
+        System.out.println("++++++++++bufferEvent Timeout time=" + eventTime +" now=" + now + " (now-eventTime)=" + (now-eventTime) + " content="+new String(bufferEvent.getBody()));
         return true;
       }
     }
@@ -158,8 +160,16 @@ public class TailFile {
     this.multilinePatternMatched = multilinePatternMatched;
   }
 
-  public void setEventTimeoutSecs(long eventTimeoutSecs) {
-    this.eventTimeoutSecs = eventTimeoutSecs;
+  public void setMultilineEventTimeoutSecs(long multilineEventTimeoutSecs) {
+    this.multilineEventTimeoutSecs = multilineEventTimeoutSecs;
+  }
+
+  public void setMultilineMaxBytes(int multilineMaxBytes) {
+    this.multilineMaxBytes = multilineMaxBytes;
+  }
+
+  public void setMultilineMaxLines(int multilineMaxLines) {
+    this.multilineMaxLines = multilineMaxLines;
   }
 
   public boolean updatePos(String path, long inode, long pos) throws IOException {
@@ -191,7 +201,6 @@ public class TailFile {
           break;
         }
         Event event = null;
-        //在上面readLine函数里加上长度判断,在这里加上超长后处理逻辑flush掉
         switch (this.multilinePatternBelong) {
           case "next":
             event = readMultilineEventNext(line, match, pattern);
@@ -203,6 +212,12 @@ public class TailFile {
         }
         if (event != null) {
           events.add(event);
+        }
+        if (bufferEvent != null && (bufferEvent.getBody().length >= multilineMaxBytes
+                || countNewLine(bufferEvent.getBody()) == multilineMaxLines)) {
+          event = EventBuilder.withBody(bufferEvent.getBody());
+          events.add(event);
+          bufferEvent = null;
         }
       }
       if (isNeedFlushBufferEvent()) {
@@ -229,12 +244,21 @@ public class TailFile {
     boolean find = m.find();
     match = (find&&match) || (!find&&!match);
     if (match) {
+      /**
+       * If matched, merge it to the buffer event. When the merged message exceeds multilineMaxBytes
+       of multilineMaxLines, create a new event.
+       */
       byte[] mergedBytes = mergeEvent(line);
       bufferEvent = EventBuilder.withBody(mergedBytes);
       long now = System.currentTimeMillis();
       bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
       bufferEvent.getHeaders().put("multiline", "true");
     } else {
+      /**
+       * If not matched, this line is not part of previous event when the buffer event is not null.
+       * Then create a new event with buffer event's message and put the current line into the
+       * cleared buffer event.
+       */
       if (bufferEvent != null) {
         event = EventBuilder.withBody(bufferEvent.getBody());
       }
@@ -253,14 +277,23 @@ public class TailFile {
     boolean find = m.find();
     match = (find&&match) || (!find&&!match);
     if (match) {
+      /**
+       * If matched, merge it to the buffer event. When the merged message exceeds multilineMaxBytes
+       of multilineMaxLines, create a new event.
+       */
       byte[] mergedBytes = mergeEvent(line);
       bufferEvent = EventBuilder.withBody(mergedBytes);
       long now = System.currentTimeMillis();
       bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
       bufferEvent.getHeaders().put("multiline", "true");
     } else {
+      /**
+       * If not matched, this line is not part of next event. Then merge the current line into the
+       * buffer event and create a new event with the merged message.
+       */
       byte[] mergedBytes = mergeEvent(line);
       event = EventBuilder.withBody(mergedBytes);
+
       bufferEvent = null;
     }
 
@@ -290,6 +323,17 @@ public class TailFile {
     return line.line;
   }
 
+  private int countNewLine(byte[] bytes) {
+    int count = 0;
+    for (int i=0; i< bytes.length; i++) {
+      if (bytes[i] == BYTE_NL) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
   private Event readEvent(boolean backoffWithoutNL, boolean addByteOffset) throws IOException {
     Long posTmp = getLineReadPos();
     LineResult line = readLine();
@@ -310,10 +354,14 @@ public class TailFile {
   }
 
   private void readFile() throws IOException {
-    if ((raf.length() - raf.getFilePointer()) < BUFFER_SIZE) {
+    int maxBytes = BUFFER_SIZE;
+    if (multiline && multilineMaxBytes < BUFFER_SIZE) {
+      maxBytes = multilineMaxBytes;
+    }
+    if ((raf.length() - raf.getFilePointer()) < maxBytes) {
       buffer = new byte[(int) (raf.length() - raf.getFilePointer())];
     } else {
-      buffer = new byte[BUFFER_SIZE];
+      buffer = new byte[maxBytes];
     }
     raf.read(buffer, 0, buffer.length);
     bufferPos = 0;
@@ -371,6 +419,13 @@ public class TailFile {
       // NEW_LINE not showed up at the end of the buffer
       oldBuffer = concatByteArrays(oldBuffer, 0, oldBuffer.length,
                                    buffer, bufferPos, buffer.length - bufferPos);
+      if (oldBuffer.length >= multilineMaxBytes) {
+        lineResult = new LineResult(false, oldBuffer);
+        setLineReadPos(lineReadPos + oldBuffer.length);
+        oldBuffer = new byte[0];
+        bufferPos = NEED_READING;
+        break;
+      }
       bufferPos = NEED_READING;
     }
     return lineResult;
