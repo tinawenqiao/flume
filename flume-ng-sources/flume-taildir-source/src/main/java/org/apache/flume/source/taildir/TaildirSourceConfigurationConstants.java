@@ -84,9 +84,17 @@ public class TaildirSourceConfigurationConstants {
   public static final String MULTILINE_PATTERN_MATCHED = "multilineMatched";
   public static final boolean DEFAULT_MULTILINE_PATTERN_MATCHED = true;
 
-  /** Maximum time (ms) before an event automatically be flushed. */
-  public static final String EVENT_TIMEOUT_SECCONDS = "eventTimeoutSeconds";
-  public static final int DEFAULT_EVENT_TIMEOUT_SECCONDS = 5;
+  /** Maximum time (ms) before an event automatically be flushed.
+   * Default value 0 means never time out.
+   */
+  public static final String MULTILINE_EVENT_TIMEOUT_SECONDS = "multilineEventTimeoutSeconds";
+  public static final int DEFAULT_MULTILINE_EVENT_TIMEOUT_SECONDS = 0;
+
+  public static final String MULTILINE_MAX_BYTES = "multilineMaxBytes";
+  public static final int DEFAULT_MULTILINE_MAX_BYTES = 10485760;
+
+  public static final String MULTILINE_MAX_LINES = "multilineMaxLines";
+  public static final int DEFAULT_MULTILINE_MAX_LINES = 500;
 
   /** Whether to flush events at a regular interval. */
   public static final String EVENT_PERIODIC_FLUSH = "eventPeriodicFlush";
