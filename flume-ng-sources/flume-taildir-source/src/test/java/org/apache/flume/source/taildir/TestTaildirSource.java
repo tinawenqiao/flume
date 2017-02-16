@@ -40,7 +40,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
+
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER_KEY;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_BELONG;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_MATCHED;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_BYTES;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_LINES;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_EVENT_TIMEOUT_SECONDS;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -342,8 +355,8 @@ public class TestTaildirSource {
     }
     txn.commit();
     txn.close();
-    assertEquals(2, out.size());
 
+    assertEquals(2, out.size());
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\nline2\n"));
     assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\nline5\n"));
   }
@@ -373,14 +386,13 @@ public class TestTaildirSource {
     for (int j = 0; j < 9; j++) {
       Event e = channel.take();
       if (e != null) {
-        System.out.println("j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
         out.add(TestTaildirEventReader.bodyAsString(e));
       }
     }
     txn.commit();
     txn.close();
-    assertEquals(6, out.size());
 
+    assertEquals(6, out.size());
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\n"));
     assertTrue(out.get(1).equals("line2\n2017-01-02 00:00:02,222 line3\n"));
     assertTrue(out.get(2).equals("line4\n"));
@@ -414,14 +426,13 @@ public class TestTaildirSource {
     for (int j = 0; j < 9; j++) {
       Event e = channel.take();
       if (e != null) {
-        System.out.println("j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
         out.add(TestTaildirEventReader.bodyAsString(e));
       }
     }
     txn.commit();
     txn.close();
-    assertEquals(3, out.size());
 
+    assertEquals(3, out.size());
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\n"));
     assertTrue(out.get(1).equals("line2\n2017-01-02 00:00:02,222 line3\n"));
     assertTrue(out.get(2).equals("line4\nline5\n2017-01-03 00:00:03,333 line6\n"));
@@ -452,14 +463,13 @@ public class TestTaildirSource {
     for (int j = 0; j < 9; j++) {
       Event e = channel.take();
       if (e != null) {
-        System.out.println("j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
         out.add(TestTaildirEventReader.bodyAsString(e));
       }
     }
     txn.commit();
     txn.close();
-    assertEquals(6, out.size());
 
+    assertEquals(6, out.size());
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\nline2\n"));
     assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\n"));
     assertTrue(out.get(2).equals("line5\n"));
@@ -475,7 +485,7 @@ public class TestTaildirSource {
     for (int i = 0; i < 25; i++) {
       longStr = longStr + "long";
     }
-    Files.write("2017-01-01 00:00:01,111 line11" + longStr +"\nline12\nline13\nline14\nline15\n" +
+    Files.write("2017-01-01 00:00:01,111 line11" + longStr + "\nline12\nline13\nline14\nline15\n" +
             "2017-01-02 00:00:02,222 line21\nline22\nline23\nline24\nline25\n" +
             "2017-01-03 00:00:03,333 line31\nline32\nline33\nline34\nline35\n",
             f1, Charsets.UTF_8);
@@ -507,9 +517,7 @@ public class TestTaildirSource {
     txn.commit();
     txn.close();
 
-
     assertEquals(6, out.size());
-
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line11" + longStr + "\n"));
     assertTrue(out.get(1).equals("line12\nline13\nline14\n"));
     assertTrue(out.get(2).equals("line15\n"));
@@ -541,11 +549,9 @@ public class TestTaildirSource {
     Transaction txn = channel.getTransaction();
     txn.begin();
     List<String> out = Lists.newArrayList();
-    for (int j = 0; j < 2; j++) {
-      System.out.println("++++j=" + j);
+    for (int j = 0; j < 9; j++) {
       Event e = channel.take();
       if (e != null) {
-        System.out.println("j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
         out.add(TestTaildirEventReader.bodyAsString(e));
       }
     }
@@ -561,10 +567,8 @@ public class TestTaildirSource {
     txn = channel.getTransaction();
     txn.begin();
     for (int j = 0; j < 2; j++) {
-      System.out.println("++++2222j=" + j);
       Event e = channel.take();
       if (e != null) {
-        System.out.println("22222j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
         out.add(TestTaildirEventReader.bodyAsString(e));
       }
     }
@@ -572,10 +576,8 @@ public class TestTaildirSource {
     txn.close();
 
     assertEquals(3, out.size());
-
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\nline2\n"));
     assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\nline5\n"));
     assertTrue(out.get(2).equals("2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n"));
   }
-
 }

@@ -74,7 +74,7 @@ public class TaildirSourceConfigurationConstants {
 
   /** Indicate the pattern belongs to the next or previous event.
    * Value can be {'previous','next'}.
-   * */
+   */
   public static final String MULTILINE_PATTERN_BELONG = "multilinePatternBelong";
   public static final String DEFAULT_MULTILINE_PATTERN_BELONG = "next";
 
@@ -84,7 +84,7 @@ public class TaildirSourceConfigurationConstants {
   public static final String MULTILINE_PATTERN_MATCHED = "multilineMatched";
   public static final boolean DEFAULT_MULTILINE_PATTERN_MATCHED = true;
 
-  /** Maximum time (ms) before an event automatically be flushed.
+  /** Maximum seconds before an event automatically be flushed.
    * Default value 0 means never time out.
    */
   public static final String MULTILINE_EVENT_TIMEOUT_SECONDS = "multilineEventTimeoutSeconds";
