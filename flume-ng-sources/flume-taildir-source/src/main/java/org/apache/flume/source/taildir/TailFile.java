@@ -112,8 +112,7 @@ public class TailFile {
       long now = System.currentTimeMillis();
       long eventTime = Long.parseLong(
               bufferEvent.getHeaders().get(TimestampInterceptor.Constants.TIMESTAMP));
-      if (multilineEventTimeoutSecs > 0 && (now-eventTime) > multilineEventTimeoutSecs *1000) {
-        System.out.println("++++++++++bufferEvent Timeout time=" + eventTime +" now=" + now + " (now-eventTime)=" + (now-eventTime) + " content="+new String(bufferEvent.getBody()));
+      if (multilineEventTimeoutSecs > 0 && (now - eventTime) > multilineEventTimeoutSecs * 1000) {
         return true;
       }
     }
@@ -207,6 +206,7 @@ public class TailFile {
             break;
           case "previous":
             event = readMultilineEventPre(line, match, pattern);
+            break;
           default:
             break;
         }
@@ -238,11 +238,12 @@ public class TailFile {
     return events;
   }
 
-  private Event readMultilineEventPre(LineResult line, boolean match, Pattern pattern) throws IOException {
+  private Event readMultilineEventPre(LineResult line, boolean match, Pattern pattern)
+          throws IOException {
     Event event = null;
     Matcher m = pattern.matcher(new String(line.line));
     boolean find = m.find();
-    match = (find&&match) || (!find&&!match);
+    match = (find && match) || (!find && !match);
     if (match) {
       /**
        * If matched, merge it to the buffer event. When the merged message exceeds multilineMaxBytes
@@ -271,11 +272,12 @@ public class TailFile {
     return event;
   }
 
-  private Event readMultilineEventNext(LineResult line, boolean match, Pattern pattern) throws IOException {
+  private Event readMultilineEventNext(LineResult line, boolean match, Pattern pattern)
+          throws IOException {
     Event event = null;
     Matcher m = pattern.matcher(new String(line.line));
     boolean find = m.find();
-    match = (find&&match) || (!find&&!match);
+    match = (find && match) || (!find && !match);
     if (match) {
       /**
        * If matched, merge it to the buffer event. When the merged message exceeds multilineMaxBytes
@@ -325,7 +327,7 @@ public class TailFile {
 
   private int countNewLine(byte[] bytes) {
     int count = 0;
-    for (int i=0; i< bytes.length; i++) {
+    for (int i = 0; i < bytes.length; i++) {
       if (bytes[i] == BYTE_NL) {
         count++;
       }
@@ -354,14 +356,10 @@ public class TailFile {
   }
 
   private void readFile() throws IOException {
-    int maxBytes = BUFFER_SIZE;
-    if (multiline && multilineMaxBytes < BUFFER_SIZE) {
-      maxBytes = multilineMaxBytes;
-    }
-    if ((raf.length() - raf.getFilePointer()) < maxBytes) {
+    if ((raf.length() - raf.getFilePointer()) < BUFFER_SIZE) {
       buffer = new byte[(int) (raf.length() - raf.getFilePointer())];
     } else {
-      buffer = new byte[maxBytes];
+      buffer = new byte[BUFFER_SIZE];
     }
     raf.read(buffer, 0, buffer.length);
     bufferPos = 0;
@@ -419,13 +417,6 @@ public class TailFile {
       // NEW_LINE not showed up at the end of the buffer
       oldBuffer = concatByteArrays(oldBuffer, 0, oldBuffer.length,
                                    buffer, bufferPos, buffer.length - bufferPos);
-      if (oldBuffer.length >= multilineMaxBytes) {
-        lineResult = new LineResult(false, oldBuffer);
-        setLineReadPos(lineReadPos + oldBuffer.length);
-        oldBuffer = new byte[0];
-        bufferPos = NEED_READING;
-        break;
-      }
       bufferPos = NEED_READING;
     }
     return lineResult;
