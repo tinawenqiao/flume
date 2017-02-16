@@ -90,13 +90,17 @@ public class TaildirSourceConfigurationConstants {
   public static final String MULTILINE_EVENT_TIMEOUT_SECONDS = "multilineEventTimeoutSeconds";
   public static final int DEFAULT_MULTILINE_EVENT_TIMEOUT_SECONDS = 0;
 
+  /**
+   * If the bytes length of multiline event exceeds this value, the event will be flushed.
+   * It's used in combination multilineMaxLines.
+   */
   public static final String MULTILINE_MAX_BYTES = "multilineMaxBytes";
   public static final int DEFAULT_MULTILINE_MAX_BYTES = 10485760;
 
+  /**
+   * If the lines of multiline event exceeds this value, the event will be flushed.
+   * It's used in combination multilineMaxBytes.
+   */
   public static final String MULTILINE_MAX_LINES = "multilineMaxLines";
   public static final int DEFAULT_MULTILINE_MAX_LINES = 500;
-
-  /** Whether to flush events at a regular interval. */
-  public static final String EVENT_PERIODIC_FLUSH = "eventPeriodicFlush";
-  public static final boolean DEFAULT_EVENT_PERIODIC_FLUSH = true;
 }

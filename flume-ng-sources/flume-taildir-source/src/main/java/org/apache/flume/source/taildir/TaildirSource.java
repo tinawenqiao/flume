@@ -204,7 +204,7 @@ public class TaildirSource extends AbstractSource implements
             DEFAULT_MULTILINE_PATTERN_BELONG);
     Preconditions.checkState(multilinePatternBelong.equals("previous") ||
             multilinePatternBelong.equals("next"),
-            "Config MultilinePatternBelong=" + multilinePatternBelong + " is invalid. Only" +
+            "Config MultilinePatternBelong = " + multilinePatternBelong + " is invalid. Only" +
                     " support 'previous' or 'next'");
     multilinePatternMatched = context.getBoolean(MULTILINE_PATTERN_MATCHED,
             DEFAULT_MULTILINE_PATTERN_MATCHED);
