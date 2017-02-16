@@ -472,7 +472,7 @@ public class TestTaildirSource {
   public void testMultilineMaxBytesAndMaxLines() throws IOException {
     File f1 = new File(tmpDir, "file1");
     String longStr = "";
-    for (int i = 0; i < 2500; i++) {
+    for (int i = 0; i < 25; i++) {
       longStr = longStr + "long";
     }
     Files.write("2017-01-01 00:00:01,111 line11" + longStr +"\nline12\nline13\nline14\nline15\n" +
@@ -488,7 +488,7 @@ public class TestTaildirSource {
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "previous");
     context.put(MULTILINE_PATTERN_MATCHED, "false");
-    context.put(MULTILINE_MAX_BYTES, "9000");
+    context.put(MULTILINE_MAX_BYTES, "25");
     context.put(MULTILINE_MAX_LINES, "3");
 
     Configurables.configure(source, context);
