@@ -356,10 +356,14 @@ public class TailFile {
   }
 
   private void readFile() throws IOException {
-    if ((raf.length() - raf.getFilePointer()) < BUFFER_SIZE) {
+    int maxBytes = BUFFER_SIZE;
+    if (multilineMaxBytes < BUFFER_SIZE) {
+      maxBytes = multilineMaxBytes;
+    }
+    if ((raf.length() - raf.getFilePointer()) < maxBytes) {
       buffer = new byte[(int) (raf.length() - raf.getFilePointer())];
     } else {
-      buffer = new byte[BUFFER_SIZE];
+      buffer = new byte[maxBytes];
     }
     raf.read(buffer, 0, buffer.length);
     bufferPos = 0;
@@ -417,6 +421,14 @@ public class TailFile {
       // NEW_LINE not showed up at the end of the buffer
       oldBuffer = concatByteArrays(oldBuffer, 0, oldBuffer.length,
                                    buffer, bufferPos, buffer.length - bufferPos);
+      if (oldBuffer.length >= multilineMaxBytes) {
+        lineResult = new LineResult(false, oldBuffer);
+        setLineReadPos(lineReadPos + oldBuffer.length);
+        oldBuffer = new byte[0];
+        bufferPos = NEED_READING;
+        break;
+      }
+
       bufferPos = NEED_READING;
     }
     return lineResult;

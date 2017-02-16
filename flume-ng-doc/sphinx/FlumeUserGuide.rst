@@ -1192,6 +1192,13 @@ cachePatternMatching                true                           Listing direc
                                                                    Requires that the file system keeps track of modification times with at least a 1-second granularity.
 fileHeader                          false                          Whether to add a header storing the absolute path filename.
 fileHeaderKey                       file                           Header key to use when appending absolute path filename to event header.
+multiline                           false                          Whether to support joining of multiline messages into a single flume event.
+multilinePattern                    \n                             Regexp which matches the start or the end of an event consisting of multilines.
+multilinePatternBelong              next                           Indicate the pattern belongs to the next or previous event. Value can be {'previous','next'}.
+multilineMatched                    true                           Whether to match the pattern. If 'false', a message not matching the pattern will be combined with the previous or the next line.
+multilineEventTimeoutSeconds        0                              Maximum time (ms) before an event automatically be flushed. Default value 0 means never time out.
+multilineMaxBytes                   10485760                       If the bytes length of multiline event exceeds this value, the event will be flushed. Default value 10MB. It's used in combination multilineMaxLines.
+multilineMaxLines                   500                            If the lines of multiline event exceeds this value, the event will be flushed. Default value 500. It's used in combination multilineMaxBytes.
 =================================== ============================== ===================================================
 
 Example for agent named a1:
@@ -1210,6 +1217,12 @@ Example for agent named a1:
   a1.sources.r1.headers.f2.headerKey1 = value2
   a1.sources.r1.headers.f2.headerKey2 = value2-2
   a1.sources.r1.fileHeader = true
+  a1.sources.r1.multiline = true
+  a1.sources.r1.multilinePattern = \d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d,\d\d\d
+  a1.sources.r1.multilinePatternBelong = previous
+  a1.sources.r1.multilineMatched = false
+  a1.sources.r1.multilineEventTimeoutSeconds = 60000
+  a1.sources.r1.multilineMaxBytes = 10
 
 Twitter 1% firehose Source (experimental)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

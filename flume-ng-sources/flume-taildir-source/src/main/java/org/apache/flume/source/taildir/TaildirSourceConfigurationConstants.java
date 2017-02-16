@@ -64,7 +64,7 @@ public class TaildirSourceConfigurationConstants {
   public static final String FILENAME_HEADER = "fileHeader";
   public static final boolean DEFAULT_FILE_HEADER = false;
 
-  /** Whether to support joining of multiline messages from a file into a single flume event. */
+  /** Whether to support joining of multiline messages into a single flume event. */
   public static final String MULTILINE = "multiline";
   public static final boolean DEFAULT_MULTILINE = false;
 
@@ -92,14 +92,14 @@ public class TaildirSourceConfigurationConstants {
 
   /**
    * If the bytes length of multiline event exceeds this value, the event will be flushed.
-   * It's used in combination multilineMaxLines.
+   * Default value 10MB. It's used in combination multilineMaxLines.
    */
   public static final String MULTILINE_MAX_BYTES = "multilineMaxBytes";
   public static final int DEFAULT_MULTILINE_MAX_BYTES = 10485760;
 
   /**
    * If the lines of multiline event exceeds this value, the event will be flushed.
-   * It's used in combination multilineMaxBytes.
+   * Default value 500. It's used in combination multilineMaxBytes.
    */
   public static final String MULTILINE_MAX_LINES = "multilineMaxLines";
   public static final int DEFAULT_MULTILINE_MAX_LINES = 500;
