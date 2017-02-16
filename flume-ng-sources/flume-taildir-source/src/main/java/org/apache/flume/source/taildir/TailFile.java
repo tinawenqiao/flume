@@ -215,15 +215,11 @@ public class TailFile {
         }
         if (bufferEvent != null && (bufferEvent.getBody().length >= multilineMaxBytes
                 || countNewLine(bufferEvent.getBody()) == multilineMaxLines)) {
-          event = EventBuilder.withBody(bufferEvent.getBody());
-          events.add(event);
-          bufferEvent = null;
+          flushBufferEvent(events);
         }
       }
       if (isNeedFlushBufferEvent()) {
-        Event event = EventBuilder.withBody(bufferEvent.getBody());
-        events.add(event);
-        bufferEvent = null;
+        flushBufferEvent(events);
       }
     } else {
       for (int i = 0; i < numEvents; i++) {
@@ -245,10 +241,7 @@ public class TailFile {
     boolean find = m.find();
     match = (find && match) || (!find && !match);
     if (match) {
-      /**
-       * If matched, merge it to the buffer event. When the merged message exceeds multilineMaxBytes
-       of multilineMaxLines, create a new event.
-       */
+      /** If matched, merge it to the buffer event. */
       byte[] mergedBytes = mergeEvent(line);
       bufferEvent = EventBuilder.withBody(mergedBytes);
       long now = System.currentTimeMillis();
@@ -279,10 +272,7 @@ public class TailFile {
     boolean find = m.find();
     match = (find && match) || (!find && !match);
     if (match) {
-      /**
-       * If matched, merge it to the buffer event. When the merged message exceeds multilineMaxBytes
-       of multilineMaxLines, create a new event.
-       */
+      /** If matched, merge it to the buffer event. */
       byte[] mergedBytes = mergeEvent(line);
       bufferEvent = EventBuilder.withBody(mergedBytes);
       long now = System.currentTimeMillis();
@@ -295,7 +285,6 @@ public class TailFile {
        */
       byte[] mergedBytes = mergeEvent(line);
       event = EventBuilder.withBody(mergedBytes);
-
       bufferEvent = null;
     }
 
@@ -312,6 +301,12 @@ public class TailFile {
       mergedBytes = lineBytes;
     }
     return mergedBytes;
+  }
+
+  private void flushBufferEvent(List<Event> events) {
+    Event event = EventBuilder.withBody(bufferEvent.getBody());
+    events.add(event);
+    bufferEvent = null;
   }
 
   private byte[] toOriginBytes(LineResult line) {
@@ -428,7 +423,6 @@ public class TailFile {
         bufferPos = NEED_READING;
         break;
       }
-
       bufferPos = NEED_READING;
     }
     return lineResult;
