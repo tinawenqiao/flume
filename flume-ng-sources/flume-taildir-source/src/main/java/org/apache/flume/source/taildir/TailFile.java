@@ -224,11 +224,10 @@ public class TailFile {
     } else {
       for (int i = 0; i < numEvents; i++) {
         Event event = readEvent(backoffWithoutNL, addByteOffset);
-        if (event != null) {
-          events.add(event);
-        } else {
+        if (event == null) {
           break;
         }
+        events.add(event);
       }
     }
     return events;
@@ -327,7 +326,6 @@ public class TailFile {
         count++;
       }
     }
-
     return count;
   }
 
