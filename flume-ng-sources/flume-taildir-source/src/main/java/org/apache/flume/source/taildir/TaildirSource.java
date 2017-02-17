@@ -86,6 +86,7 @@ public class TaildirSource extends AbstractSource implements
   private Long maxBackOffSleepInterval;
   private boolean fileHeader;
   private String fileHeaderKey;
+  private int lineMaxBytes;
   private boolean multiline;
   private String multilinePattern;
   private String multilinePatternBelong;
@@ -107,6 +108,7 @@ public class TaildirSource extends AbstractSource implements
           .cachePatternMatching(cachePatternMatching)
           .annotateFileName(fileHeader)
           .fileNameHeader(fileHeaderKey)
+          .lineMaxBytes(lineMaxBytes)
           .multiline(multiline)
           .multilinePattern(multilinePattern)
           .multilinePatternBelong(multilinePatternBelong)
@@ -198,6 +200,7 @@ public class TaildirSource extends AbstractSource implements
             DEFAULT_FILE_HEADER);
     fileHeaderKey = context.getString(FILENAME_HEADER_KEY,
             DEFAULT_FILENAME_HEADER_KEY);
+    lineMaxBytes = context.getInteger(LINE_MAX_BYTES, DEFAULT_LINE_MAX_BYTES);
     multiline = context.getBoolean(MULTILINE, DEFAULT_MULTILINE);
     multilinePattern = context.getString(MULTILINE_PATTERN, DEFAULT_MULTILINE_PATTERN);
     multilinePatternBelong = context.getString(MULTILINE_PATTERN_BELONG,

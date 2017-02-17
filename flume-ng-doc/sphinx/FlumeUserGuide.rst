@@ -1215,7 +1215,7 @@ Example for agent named a1:
   a1.sources.r1.multilinePattern = \d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d,\d\d\d
   a1.sources.r1.multilinePatternBelong = previous
   a1.sources.r1.multilineMatched = false
-  a1.sources.r1.multilineEventTimeoutSeconds = 60000
+  a1.sources.r1.multilineEventTimeoutSeconds = 300
   a1.sources.r1.multilineMaxBytes = 10
 
 Twitter 1% firehose Source (experimental)
