@@ -103,7 +103,7 @@ public class TailFile {
     return lastUpdated;
   }
 
-  public boolean isNeedTail() {
+  public boolean needTail() {
     return needTail;
   }
 
