@@ -314,46 +314,6 @@ public class TestTaildirSource {
   }
 
   @Test
-  public void testLineMaxBytes() throws IOException {
-    File f1 = new File(tmpDir, "file1");
-    String longStrA = "";
-    String longStrB = "";
-    String longStrC = "";
-    for (int i = 0; i < 8192; i++) {
-      longStrA = longStrA + "aa";
-      longStrB = longStrB + "bb";
-      longStrC = longStrC + "cc";
-    }
-    Files.write(longStrA+longStrB+longStrC, f1, Charsets.UTF_8);
-
-    Context context = new Context();
-    context.put(POSITION_FILE, posFilePath);
-    context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
-    context.put(LINE_MAX_BYTES, "16384");
-
-    Configurables.configure(source, context);
-    source.start();
-    source.process();
-    Transaction txn = channel.getTransaction();
-    txn.begin();
-    List<String> out = Lists.newArrayList();
-    for (int j = 0; j < 6; j++) {
-      Event e = channel.take();
-      if (e != null) {
-        out.add(TestTaildirEventReader.bodyAsString(e));
-      }
-    }
-    txn.commit();
-    txn.close();
-
-    assertEquals(3, out.size());
-    assertTrue(out.get(0).equals(longStrA));
-    assertTrue(out.get(1).equals(longStrB));
-    assertTrue(out.get(2).equals(longStrC));
-  }
-
-  @Test
   public void testMultilineBelongPreMatchedFalse() throws IOException {
     File f1 = new File(tmpDir, "file1");
     Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
@@ -510,11 +470,11 @@ public class TestTaildirSource {
   public void testMultilineMaxBytesAndMaxLines() throws IOException {
     File f1 = new File(tmpDir, "file1");
     String longStr = "";
-    for (int i = 0; i < 25; i++) {
-      longStr = longStr + "long";
+    for (int i = 0; i < 8192; i++) {
+      longStr = longStr + "aa";
     }
     Files.write("2017-01-01 00:00:01,111 line11\nline12\nline13\nline14\nline15\n" +
-            "2017-01-02 00:00:02,222 line21\nline22\nline23\nline24\nline25\n" +
+            "2017-01-02 00:00:02,222 line21\nline22" + longStr + "\nline23\nline24\nline25\n" +
             "2017-01-03 00:00:03,333 line31\nline32\nline33\nline34\nline35\n",
             f1, Charsets.UTF_8);
 
@@ -526,8 +486,8 @@ public class TestTaildirSource {
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "previous");
     context.put(MULTILINE_PATTERN_MATCHED, "false");
-    context.put(MULTILINE_MAX_BYTES, "25");
-    context.put(MULTILINE_MAX_LINES, "3");
+    context.put(MULTILINE_MAX_BYTES, "16384");
+    context.put(MULTILINE_MAX_LINES, "4");
 
     Configurables.configure(source, context);
     source.start();
@@ -538,20 +498,18 @@ public class TestTaildirSource {
     for (int j = 0; j < 15; j++) {
       Event e = channel.take();
       if (e != null) {
-        System.out.println("j=" + j + ": " + TestTaildirEventReader.bodyAsString(e));
         out.add(TestTaildirEventReader.bodyAsString(e));
       }
     }
     txn.commit();
     txn.close();
 
-    assertEquals(6, out.size());
-    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line11" + longStr + "\n"));
-    assertTrue(out.get(1).equals("line12\nline13\nline14\n"));
-    assertTrue(out.get(2).equals("line15\n"));
-    assertTrue(out.get(3).equals("2017-01-02 00:00:02,222 line21\nline22\nline23\n"));
-    assertTrue(out.get(4).equals("line24\nline25\n"));
-    assertTrue(out.get(5).equals("2017-01-03 00:00:03,333 line31\nline32\nline33\n"));
+    assertEquals(5, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line11\nline12\nline13\nline14\n"));
+    assertTrue(out.get(1).equals("line15\n"));
+    assertTrue(out.get(2).equals("2017-01-02 00:00:02,222 line21\nline22" + longStr + "\n"));
+    assertTrue(out.get(3).equals("line23\nline24\nline25\n"));
+    assertTrue(out.get(4).equals("2017-01-03 00:00:03,333 line31\nline32\nline33\nline34\n"));
   }
 
   @Test
