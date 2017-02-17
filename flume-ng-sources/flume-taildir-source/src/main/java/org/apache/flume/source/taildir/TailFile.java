@@ -215,7 +215,7 @@ public class TailFile {
         }
         if (bufferEvent != null) {
           if (bufferEvent.getBody().length >= multilineMaxBytes
-                  || Integer.parseInt(bufferEvent.getHeaders().get("lineCount")) == multilineMaxLines) {
+              || Integer.parseInt(bufferEvent.getHeaders().get("lineCount")) == multilineMaxLines) {
             flushBufferEvent(events);
           }
         }
@@ -333,7 +333,7 @@ public class TailFile {
     }
     if (backoffWithoutNL && !line.lineSepInclude) {
       logger.info("Backing off in file without newline: "
-              + path + ", inode: " + inode + ", pos: " + raf.getFilePointer());
+          + path + ", inode: " + inode + ", pos: " + raf.getFilePointer());
       updateFilePos(posTmp);
       return null;
     }
@@ -371,8 +371,8 @@ public class TailFile {
         } else {
           if (oldBuffer.length > 0) {
             lineResult = new LineResult(false, oldBuffer);
-            setLineReadPos(lineReadPos + oldBuffer.length);
             oldBuffer = new byte[0];
+            setLineReadPos(lineReadPos + lineResult.line.length);
           }
           break;
         }
@@ -388,8 +388,8 @@ public class TailFile {
           } else if (oldBuffer.length > 0 && oldBuffer[oldBuffer.length - 1] == BYTE_CR) {
             oldLen -= 1;
           }
-          byte[] lineBuffer = concatByteArrays(oldBuffer, 0, oldLen, buffer, bufferPos, lineLen);
-          lineResult = new LineResult(true, lineBuffer);
+          lineResult = new LineResult(true,
+              concatByteArrays(oldBuffer, 0, oldLen, buffer, bufferPos, lineLen));
           setLineReadPos(lineReadPos + (oldBuffer.length + (i - bufferPos + 1)));
           oldBuffer = new byte[0];
           if (i + 1 < buffer.length) {
@@ -404,7 +404,8 @@ public class TailFile {
         break;
       }
       // NEW_LINE not showed up at the end of the buffer
-      oldBuffer = concatByteArrays(oldBuffer, 0, oldBuffer.length, buffer, bufferPos, buffer.length - bufferPos);
+      oldBuffer = concatByteArrays(oldBuffer, 0, oldBuffer.length,
+                                   buffer, bufferPos, buffer.length - bufferPos);
       bufferPos = NEED_READING;
     }
     return lineResult;
