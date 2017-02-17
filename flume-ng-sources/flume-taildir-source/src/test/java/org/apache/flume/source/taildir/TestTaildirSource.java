@@ -41,19 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_PREFIX;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER_KEY;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_BELONG;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_MATCHED;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_BYTES;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_LINES;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_EVENT_TIMEOUT_SECONDS;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -326,6 +314,46 @@ public class TestTaildirSource {
   }
 
   @Test
+  public void testLineMaxBytes() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    String longStrA = "";
+    String longStrB = "";
+    String longStrC = "";
+    for (int i = 0; i < 8192; i++) {
+      longStrA = longStrA + "aa";
+      longStrB = longStrB + "bb";
+      longStrC = longStrC + "cc";
+    }
+    Files.write(longStrA+longStrB+longStrC, f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(LINE_MAX_BYTES, "16384");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 6; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(3, out.size());
+    assertTrue(out.get(0).equals(longStrA));
+    assertTrue(out.get(1).equals(longStrB));
+    assertTrue(out.get(2).equals(longStrC));
+  }
+
+  @Test
   public void testMultilineBelongPreMatchedFalse() throws IOException {
     File f1 = new File(tmpDir, "file1");
     Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
@@ -485,7 +513,7 @@ public class TestTaildirSource {
     for (int i = 0; i < 25; i++) {
       longStr = longStr + "long";
     }
-    Files.write("2017-01-01 00:00:01,111 line11" + longStr + "\nline12\nline13\nline14\nline15\n" +
+    Files.write("2017-01-01 00:00:01,111 line11\nline12\nline13\nline14\nline15\n" +
             "2017-01-02 00:00:02,222 line21\nline22\nline23\nline24\nline25\n" +
             "2017-01-03 00:00:03,333 line31\nline32\nline33\nline34\nline35\n",
             f1, Charsets.UTF_8);
