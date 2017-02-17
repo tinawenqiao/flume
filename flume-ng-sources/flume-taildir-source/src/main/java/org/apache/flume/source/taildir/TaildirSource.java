@@ -250,7 +250,7 @@ public class TaildirSource extends AbstractSource implements
       existingInodes.addAll(reader.updateTailFiles());
       for (long inode : existingInodes) {
         TailFile tf = reader.getTailFiles().get(inode);
-        if (tf.isNeedTail() || tf.isNeedFlushBufferEvent()) {
+        if (tf.needTail() || tf.isNeedFlushBufferEvent()) {
           tailFileProcess(tf, true);
         }
       }
