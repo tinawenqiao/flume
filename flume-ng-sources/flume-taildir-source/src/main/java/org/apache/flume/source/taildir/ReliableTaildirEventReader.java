@@ -326,7 +326,6 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
             TaildirSourceConfigurationConstants.DEFAULT_FILE_HEADER;
     private String fileNameHeader =
             TaildirSourceConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY;
-    private int lineMaxBytes;
     private boolean multiline;
     private String multilinePattern;
     private String multilinePatternBelong;

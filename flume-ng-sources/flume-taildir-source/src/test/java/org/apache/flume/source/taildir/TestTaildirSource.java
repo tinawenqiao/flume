@@ -40,8 +40,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER_KEY;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_BELONG;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_MATCHED;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_BYTES;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_LINES;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_EVENT_TIMEOUT_SECONDS;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
