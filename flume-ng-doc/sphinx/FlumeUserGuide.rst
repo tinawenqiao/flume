@@ -1196,8 +1196,8 @@ multiline                           false                          Whether to su
 multilinePattern                    \n                             Regexp which matches the start or the end of an event consisting of multilines.
 multilinePatternBelong              next                           Indicate the pattern belongs to the next or previous event. Value can be {'previous','next'}.
 multilineMatched                    true                           Whether to match the pattern. If 'false', a message not matching the pattern will be combined with the previous or the next line.
-multilineEventTimeoutSeconds        0                              Maximum time (ms) before an event automatically be flushed. Default value 0 means never time out.
-multilineMaxBytes                   10485760                       If the bytes length of multiline event exceeds this value, the event will be flushed. Default value 10MB. It's used in combination multilineMaxLines.
+multilineEventTimeoutSeconds        0                              Maximum seconds before an event automatically be flushed. Default value 0 means never time out.
+multilineMaxBytes                   10485760                       If the length of multiline event bytes exceeds this value, the event will be flushed. Default value 10MB. It's used in combination multilineMaxLines.
 multilineMaxLines                   500                            If the lines of multiline event exceeds this value, the event will be flushed. Default value 500. It's used in combination multilineMaxBytes.
 =================================== ============================== ===================================================
 
@@ -1223,7 +1223,7 @@ Example for agent named a1:
   a1.sources.r1.multilineMatched = false
   a1.sources.r1.multilineEventTimeoutSeconds = 300
   a1.sources.r1.multilineMaxBytes = 10485760
-  a1.sources.r1.multilineMaxLines = 100
+  a1.sources.r1.multilineMaxLines = 500
 
 
 Twitter 1% firehose Source (experimental)
