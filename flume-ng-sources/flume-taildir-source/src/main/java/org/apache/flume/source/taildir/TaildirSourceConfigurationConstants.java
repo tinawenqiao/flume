@@ -64,10 +64,6 @@ public class TaildirSourceConfigurationConstants {
   public static final String FILENAME_HEADER = "fileHeader";
   public static final boolean DEFAULT_FILE_HEADER = false;
 
-  /** Max bytes of one line. Default value is 1MB. */
-  public static final String LINE_MAX_BYTES = "lineMaxBytes";
-  public static final int DEFAULT_LINE_MAX_BYTES = 10240;
-
   /** Whether to support joining of multiline messages into a single flume event. */
   public static final String MULTILINE = "multiline";
   public static final boolean DEFAULT_MULTILINE = false;

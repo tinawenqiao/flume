@@ -56,7 +56,6 @@ public class TailFile {
   private byte[] oldBuffer;
   private int bufferPos;
   private long lineReadPos;
-  private int lineMaxBytes;
   private boolean multiline;
   private String multilinePattern;
   private String multilinePatternBelong;
@@ -142,10 +141,6 @@ public class TailFile {
 
   public void setLineReadPos(long lineReadPos) {
     this.lineReadPos = lineReadPos;
-  }
-
-  public void setLineMaxBytes(int lineMaxBytes) {
-    this.lineMaxBytes = lineMaxBytes;
   }
 
   public void setMultiline(boolean multiline) {
@@ -336,13 +331,11 @@ public class TailFile {
     if (line == null) {
       return null;
     }
-    if (line.line.length < lineMaxBytes) {
-      if (backoffWithoutNL && !line.lineSepInclude) {
-        logger.info("Backing off in file without newline: "
-                + path + ", inode: " + inode + ", pos: " + raf.getFilePointer());
-        updateFilePos(posTmp);
-        return null;
-      }
+    if (backoffWithoutNL && !line.lineSepInclude) {
+      logger.info("Backing off in file without newline: "
+              + path + ", inode: " + inode + ", pos: " + raf.getFilePointer());
+      updateFilePos(posTmp);
+      return null;
     }
     Event event = EventBuilder.withBody(line.line);
     if (addByteOffset == true) {
@@ -412,14 +405,6 @@ public class TailFile {
       }
       // NEW_LINE not showed up at the end of the buffer
       oldBuffer = concatByteArrays(oldBuffer, 0, oldBuffer.length, buffer, bufferPos, buffer.length - bufferPos);
-      // If oldBuffer's length exceeds lineMaxBytes, break readline().
-      if (oldBuffer.length >= lineMaxBytes) {
-        lineResult = new LineResult(false, oldBuffer);
-        setLineReadPos(lineReadPos + oldBuffer.length);
-        oldBuffer = new byte[0];
-        bufferPos = NEED_READING;
-        break;
-      }
       bufferPos = NEED_READING;
     }
     return lineResult;

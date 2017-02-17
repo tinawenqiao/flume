@@ -59,7 +59,6 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private boolean committed = true;
   private final boolean annotateFileName;
   private final String fileNameHeader;
-  private int lineMaxBytes;
   private boolean multiline;
   private String multilinePattern;
   private String multilinePatternBelong;
@@ -75,7 +74,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       Table<String, String, String> headerTable, String positionFilePath,
       boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
       boolean annotateFileName, String fileNameHeader,
-      int lineMaxBytes, boolean multiline, String multilinePattern,
+      boolean multiline, String multilinePattern,
       String multilinePatternBelong, boolean multilinePatternMatched, long eventTimeoutSecs,
       int multilineMaxBytes, int multilineMaxLines)
           throws IOException {
@@ -101,7 +100,6 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.cachePatternMatching = cachePatternMatching;
     this.annotateFileName = annotateFileName;
     this.fileNameHeader = fileNameHeader;
-    this.lineMaxBytes = lineMaxBytes;
     this.multiline = multiline;
     this.multilinePattern = multilinePattern;
     this.multilinePatternBelong = multilinePatternBelong;
@@ -212,7 +210,6 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       long lastPos = currentFile.getPos();
       currentFile.updateFilePos(lastPos);
     }
-    currentFile.setLineMaxBytes(lineMaxBytes);
     currentFile.setMultiline(multiline);
     currentFile.setMultilinePattern(multilinePattern);
     currentFile.setMultilinePatternBelong(multilinePatternBelong);
@@ -378,11 +375,6 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
-    public Builder lineMaxBytes(int lineMaxBytes) {
-      this.lineMaxBytes = lineMaxBytes;
-      return this;
-    }
-
     public Builder multiline(boolean multiline) {
       this.multiline = multiline;
       return this;
@@ -422,7 +414,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
                                             addByteOffset, cachePatternMatching,
                                             annotateFileName, fileNameHeader,
-                                            lineMaxBytes, multiline, multilinePattern,
+                                            multiline, multilinePattern,
                                             multilinePatternBelong, multilinePatternMatched,
                                             eventTimeoutSecs, multilineMaxBytes, multilineMaxLines);
     }
