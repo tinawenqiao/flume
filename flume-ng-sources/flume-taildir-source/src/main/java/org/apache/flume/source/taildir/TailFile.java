@@ -107,7 +107,7 @@ public class TailFile {
     return needTail;
   }
 
-  public boolean isNeedFlushBufferEvent() {
+  public boolean needFlushTimeoutEvent() {
     if (bufferEvent != null) {
       long now = System.currentTimeMillis();
       long eventTime = Long.parseLong(
@@ -219,7 +219,7 @@ public class TailFile {
           }
         }
       }
-      if (isNeedFlushBufferEvent()) {
+      if (needFlushTimeoutEvent()) {
         flushBufferEvent(events);
       }
     } else {
