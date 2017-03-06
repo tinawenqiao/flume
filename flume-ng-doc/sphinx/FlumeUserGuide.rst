@@ -1188,7 +1188,7 @@ fileHeader                          false                          Whether to ad
 fileHeaderKey                       file                           Header key to use when appending absolute path filename to event header.
 multiline                           false                          Whether to support joining of multiline messages into a single flume event.
 multilinePattern                    \n                             Regexp which matches the start or the end of an event consisting of multilines.
-multilinePatternBelong              next                           Indicate the pattern belongs to the next or previous event. Value can be {'previous','next'}.
+multilinePatternBelong              next                           Value can be {'previous','next'}. Value 'previous' indicates that the matched line is part of the previous message and value 'next' indicates the matched line is part of the next message. 
 multilineMatched                    true                           Whether to match the pattern. If 'false', a message not matching the pattern will be combined with the previous or the next line.
 multilineEventTimeoutSeconds        0                              Maximum seconds before an event automatically be flushed. Default value 0 means never time out.
 multilineMaxBytes                   10485760                       If the length of multiline event bytes exceeds this value, the event will be flushed. Default value 10MB. It's used in combination multilineMaxLines.

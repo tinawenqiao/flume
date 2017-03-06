@@ -57,7 +57,7 @@ public class TailFile {
   private int bufferPos;
   private long lineReadPos;
   private boolean multiline;
-  private String multilinePattern;
+  private Pattern multilinePattern;
   private String multilinePatternBelong;
   private boolean multilinePatternMatched;
   private long multilineEventTimeoutSecs;
@@ -148,7 +148,7 @@ public class TailFile {
   }
 
   public void setMultilinePattern(String multilinePattern) {
-    this.multilinePattern = multilinePattern;
+    this.multilinePattern = Pattern.compile(multilinePattern);
   }
 
   public void setMultilinePatternBelong(String multilinePatternBelong) {
@@ -193,7 +193,6 @@ public class TailFile {
     List<Event> events = Lists.newLinkedList();
     if (this.multiline) {
       boolean match = this.multilinePatternMatched;
-      Pattern pattern = Pattern.compile(this.multilinePattern);
       while (events.size() < numEvents) {
         LineResult line = readLine();
         if (line == null) {
@@ -202,10 +201,10 @@ public class TailFile {
         Event event = null;
         switch (this.multilinePatternBelong) {
           case "next":
-            event = readMultilineEventNext(line, match, pattern);
+            event = readMultilineEventNext(line, match);
             break;
           case "previous":
-            event = readMultilineEventPre(line, match, pattern);
+            event = readMultilineEventPre(line, match);
             break;
           default:
             break;
@@ -235,10 +234,10 @@ public class TailFile {
     return events;
   }
 
-  private Event readMultilineEventPre(LineResult line, boolean match, Pattern pattern)
+  private Event readMultilineEventPre(LineResult line, boolean match)
           throws IOException {
     Event event = null;
-    Matcher m = pattern.matcher(new String(line.line));
+    Matcher m = multilinePattern.matcher(new String(line.line));
     boolean find = m.find();
     match = (find && match) || (!find && !match);
     byte[] lineBytes = toOriginBytes(line);
@@ -265,10 +264,10 @@ public class TailFile {
     return event;
   }
 
-  private Event readMultilineEventNext(LineResult line, boolean match, Pattern pattern)
+  private Event readMultilineEventNext(LineResult line, boolean match)
           throws IOException {
     Event event = null;
-    Matcher m = pattern.matcher(new String(line.line));
+    Matcher m = multilinePattern.matcher(new String(line.line));
     boolean find = m.find();
     match = (find && match) || (!find && !match);
     if (match) {
