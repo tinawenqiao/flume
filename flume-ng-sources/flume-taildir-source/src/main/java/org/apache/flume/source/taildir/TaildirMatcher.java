@@ -44,6 +44,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.EnumSet;
+import java.util.Set;
+import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 
 /**
  * Identifies and caches the files matched by single file pattern for {@code TAILDIR} source.
@@ -215,7 +218,8 @@ public class TaildirMatcher {
   private List<File> getMatchingFilesNoCache() {
     final List<File> result = Lists.newArrayList();
     try {
-      Files.walkFileTree(Paths.get(parentDir.toString()), new SimpleFileVisitor<Path>() {
+      Set options = EnumSet.of(FOLLOW_LINKS);
+      Files.walkFileTree(Paths.get(parentDir.toString()), options, Integer.MAX_VALUE, new SimpleFileVisitor<Path>() {
         PathMatcher dirMatcher = FS.getPathMatcher("glob:" + (new File(filePattern).getParent()));
         PathMatcher fileNameMatcher = FS.getPathMatcher("regex:" +
                 (new File(filePattern).getName()));
