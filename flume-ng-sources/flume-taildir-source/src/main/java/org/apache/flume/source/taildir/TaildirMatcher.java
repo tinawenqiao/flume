@@ -90,7 +90,6 @@ public class TaildirMatcher {
 
   // directory monitored for changes
   private final File parentDir;
-  // cached instance for filtering files based on filePattern
 
   // system time in milliseconds, stores the last modification time of the
   // parent directory seen by the last check, rounded to seconds
