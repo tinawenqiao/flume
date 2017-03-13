@@ -106,8 +106,7 @@ public class TestTaildirMatcher {
     append("file1");
 
     TaildirMatcher tm = new TaildirMatcher("f1",
-                                           tmpDir.getAbsolutePath() + File.separator, "file.*",
-                                           isCachingNeeded);
+                                           tmpDir.getAbsolutePath(), "file.*", isCachingNeeded);
     List<String> files = filesToNames(tm.getMatchingFiles());
     assertEquals(msgAlreadyExistingFile, 2, files.size());
     assertTrue(msgAlreadyExistingFile, files.contains("file1"));
@@ -141,9 +140,7 @@ public class TestTaildirMatcher {
     append("file0");
     append("file1");
 
-    TaildirMatcher tm = new TaildirMatcher("f1",
-                                           tmpDir.getAbsolutePath() + File.separator , "file.*",
-                                           false);
+    TaildirMatcher tm = new TaildirMatcher("f1", tmpDir.getAbsolutePath(), "file.*", false);
     List<String> files = filesToNames(tm.getMatchingFiles());
     assertEquals(msgAlreadyExistingFile, 2, files.size());
     assertTrue(msgAlreadyExistingFile, files.contains("file1"));
@@ -175,8 +172,7 @@ public class TestTaildirMatcher {
   @Test
   public void testEmtpyDirMatching() throws Exception {
     TaildirMatcher tm = new TaildirMatcher("empty",
-                                           tmpDir.getAbsolutePath() + File.separator ,  ".*",
-                                           isCachingNeeded);
+                                           tmpDir.getAbsolutePath(), ".*", isCachingNeeded);
     List<File> files = tm.getMatchingFiles();
     assertNotNull(msgEmptyDir, files);
     assertTrue(msgEmptyDir, files.isEmpty());
@@ -186,8 +182,7 @@ public class TestTaildirMatcher {
   public void testNoMatching() throws Exception {
     TaildirMatcher tm = new TaildirMatcher(
         "nomatch",
-        tmpDir.getAbsolutePath() + File.separator , "abracadabra_nonexisting",
-        isCachingNeeded);
+        tmpDir.getAbsolutePath(), "abracadabra_nonexisting", isCachingNeeded);
     List<File> files = tm.getMatchingFiles();
     assertNotNull(msgNoMatch, files);
     assertTrue(msgNoMatch, files.isEmpty());
