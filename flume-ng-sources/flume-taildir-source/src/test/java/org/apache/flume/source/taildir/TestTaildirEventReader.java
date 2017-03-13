@@ -22,7 +22,7 @@ package org.apache.flume.source.taildir;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
@@ -40,6 +40,8 @@ import java.util.Set;
 
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants
                   .BYTE_OFFSET_HEADER_KEY;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_DIR;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -68,7 +70,7 @@ public class TestTaildirEventReader {
     return headers;
   }
 
-  private ReliableTaildirEventReader getReader(Map<String, String> filePaths,
+  private ReliableTaildirEventReader getReader(Table<String, String, String> filePaths,
       Table<String, String, String> headerTable, boolean addByteOffset) {
     ReliableTaildirEventReader reader;
     try {
@@ -87,8 +89,12 @@ public class TestTaildirEventReader {
   }
 
   private ReliableTaildirEventReader getReader(boolean addByteOffset) {
-    Map<String, String> filePaths = ImmutableMap.of("testFiles",
-                                                    tmpDir.getAbsolutePath() + "/file.*");
+    ImmutableTable<String, String, String> filePaths =
+            new ImmutableTable.Builder<String, String, String>()
+            .put("testFiles", FILE_GROUPS_SUFFIX_DIR.substring(1), tmpDir.getAbsolutePath())
+            .put("testFiles", FILE_GROUPS_SUFFIX_FILE.substring(1), "file.*")
+            .build();
+
     Table<String, String, String> headerTable = HashBasedTable.create();
     return getReader(filePaths, headerTable, addByteOffset);
   }
