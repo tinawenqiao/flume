@@ -41,7 +41,10 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
+
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_DIR;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -63,7 +66,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   /**
    * Create a ReliableTaildirEventReader to watch the given directory.
    */
-  private ReliableTaildirEventReader(Map<String, String> filePaths,
+  private ReliableTaildirEventReader(Table<String, String, String> filePaths,
       Table<String, String, String> headerTable, String positionFilePath,
       boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
       boolean annotateFileName, String fileNameHeader) throws IOException {
@@ -77,8 +80,12 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     }
 
     List<TaildirMatcher> taildirCache = Lists.newArrayList();
-    for (Entry<String, String> e : filePaths.entrySet()) {
-      taildirCache.add(new TaildirMatcher(e.getKey(), e.getValue(), cachePatternMatching));
+    Set<String> filegroups = filePaths.rowKeySet();
+    for (String fg: filegroups) {
+      Map<String, String> paths = filePaths.row(fg);
+      String parentDir = paths.get(FILE_GROUPS_SUFFIX_DIR.substring(1));
+      String filePath = paths.get(FILE_GROUPS_SUFFIX_FILE.substring(1));
+      taildirCache.add(new TaildirMatcher(fg, parentDir, filePath, cachePatternMatching));
     }
     logger.info("taildirCache: " + taildirCache.toString());
     logger.info("headerTable: " + headerTable.toString());
@@ -291,7 +298,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
    * Special builder class for ReliableTaildirEventReader
    */
   public static class Builder {
-    private Map<String, String> filePaths;
+    private Table<String, String, String> filePaths;
     private Table<String, String, String> headerTable;
     private String positionFilePath;
     private boolean skipToEnd;
@@ -302,7 +309,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     private String fileNameHeader =
             TaildirSourceConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY;
 
-    public Builder filePaths(Map<String, String> filePaths) {
+    public Builder filePaths(Table<String, String, String> filePaths) {
       this.filePaths = filePaths;
       return this;
     }
