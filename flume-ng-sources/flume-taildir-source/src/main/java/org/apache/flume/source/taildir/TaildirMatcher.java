@@ -48,7 +48,6 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
 
 /**
  * Identifies and caches the files matched by single file pattern for {@code TAILDIR} source.
@@ -83,7 +82,7 @@ public class TaildirMatcher {
   private final boolean cachePatternMatching;
   // id from configuration
   private final String fileGroup;
-  // plain string of the desired files from configuration
+  // matcher created with file group full path's regex
   private final PathMatcher fileMatcher;
 
   // plain string of the desired files from configuration
@@ -242,7 +241,7 @@ public class TaildirMatcher {
           });
     } catch (IOException e) {
       logger.error("I/O exception occurred while listing parent directory. " +
-              "Files already matched will be returned. " + parentDir.toPath(), e);
+                   "Files already matched will be returned. " + parentDir.toPath(), e);
     } catch (IllegalArgumentException e) {
       logger.error("Filegroup Pattern (" + getFileGroup() + "=" + filePattern + ") Is Illegal.", e);
     }
