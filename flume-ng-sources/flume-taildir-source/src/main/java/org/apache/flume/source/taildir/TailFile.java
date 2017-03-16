@@ -192,30 +192,32 @@ public class TailFile {
       boolean addByteOffset) throws IOException {
     List<Event> events = Lists.newLinkedList();
     if (this.multiline) {
-      boolean match = this.multilinePatternMatched;
-      while (events.size() < numEvents) {
-        LineResult line = readLine();
-        if (line == null) {
-          break;
-        }
-        Event event = null;
-        switch (this.multilinePatternBelong) {
-          case "next":
-            event = readMultilineEventNext(line, match);
+      if (raf != null) { // when file has not closed yet
+        boolean match = this.multilinePatternMatched;
+        while (events.size() < numEvents) {
+          LineResult line = readLine();
+          if (line == null) {
             break;
-          case "previous":
-            event = readMultilineEventPre(line, match);
-            break;
-          default:
-            break;
-        }
-        if (event != null) {
-          events.add(event);
-        }
-        if (bufferEvent != null) {
-          if (bufferEvent.getBody().length >= multilineMaxBytes
-              || Integer.parseInt(bufferEvent.getHeaders().get("lineCount")) == multilineMaxLines) {
-            flushBufferEvent(events);
+          }
+          Event event = null;
+          switch (this.multilinePatternBelong) {
+            case "next":
+              event = readMultilineEventNext(line, match);
+              break;
+            case "previous":
+              event = readMultilineEventPre(line, match);
+              break;
+            default:
+              break;
+          }
+          if (event != null) {
+            events.add(event);
+          }
+          if (bufferEvent != null) {
+            if (bufferEvent.getBody().length >= multilineMaxBytes
+                    || Integer.parseInt(bufferEvent.getHeaders().get("lineCount")) == multilineMaxLines) {
+              flushBufferEvent(events);
+            }
           }
         }
       }
