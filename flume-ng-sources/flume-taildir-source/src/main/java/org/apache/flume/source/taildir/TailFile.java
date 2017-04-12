@@ -259,6 +259,8 @@ public class TailFile {
       bufferEvent = EventBuilder.withBody(lineBytes);
       if (line.lineSepInclude) {
         bufferEvent.getHeaders().put("lineCount", "1");
+      } else {
+        bufferEvent.getHeaders().put("lineCount", "0");
       }
       long now = System.currentTimeMillis();
       bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
@@ -303,6 +305,8 @@ public class TailFile {
       bufferEvent.getHeaders().put("multiline", "true");
       if (line.lineSepInclude) {
         bufferEvent.getHeaders().put("lineCount", "1");
+      } else {
+        bufferEvent.getHeaders().put("lineCount", "0");
       }
     }
     long now = System.currentTimeMillis();

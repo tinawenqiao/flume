@@ -210,13 +210,15 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       long lastPos = currentFile.getPos();
       currentFile.updateFilePos(lastPos);
     }
-    currentFile.setMultiline(multiline);
-    currentFile.setMultilinePattern(multilinePattern);
-    currentFile.setMultilinePatternBelong(multilinePatternBelong);
-    currentFile.setMultilinePatternMatched(multilinePatternMatched);
-    currentFile.setMultilineEventTimeoutSecs(multilineEventTimeoutSecs);
-    currentFile.setMultilineMaxBytes(multilineMaxBytes);
-    currentFile.setMultilineMaxLines(multilineMaxLines);
+    if (multiline) {
+      currentFile.setMultiline(multiline);
+      currentFile.setMultilinePattern(multilinePattern);
+      currentFile.setMultilinePatternBelong(multilinePatternBelong);
+      currentFile.setMultilinePatternMatched(multilinePatternMatched);
+      currentFile.setMultilineEventTimeoutSecs(multilineEventTimeoutSecs);
+      currentFile.setMultilineMaxBytes(multilineMaxBytes);
+      currentFile.setMultilineMaxLines(multilineMaxLines);
+    }
     List<Event> events = currentFile.readEvents(numEvents, backoffWithoutNL, addByteOffset);
     if (events.isEmpty()) {
       return events;
