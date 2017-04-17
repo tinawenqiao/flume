@@ -42,6 +42,8 @@ import java.util.List;
 
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_DIR;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
@@ -109,9 +111,13 @@ public class TestTaildirSource {
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "ab c");
     // Tail a.log and b.log
-    context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/[ab].log");
+    //context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/[ab].log");
+    context.put(FILE_GROUPS_PREFIX + "ab" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "ab" + FILE_GROUPS_SUFFIX_FILE,  "[ab].log");
     // Tail files that starts with c.log
-    context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/c.log.*");
+    //context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/c.log.*");
+    context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_FILE, "c.log.*");
 
     Configurables.configure(source, context);
     source.start();
@@ -149,9 +155,12 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1 f2 f3");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1$");
-    context.put(FILE_GROUPS_PREFIX + "f2", tmpDir.getAbsolutePath() + "/file2$");
-    context.put(FILE_GROUPS_PREFIX + "f3", tmpDir.getAbsolutePath() + "/file3$");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file1$");
+    context.put(FILE_GROUPS_PREFIX + "f2" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f2" + FILE_GROUPS_SUFFIX_FILE, "file2$");
+    context.put(FILE_GROUPS_PREFIX + "f3" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f3" + FILE_GROUPS_SUFFIX_FILE, "file3$");
     context.put(HEADERS_PREFIX + "f1.headerKeyTest", "value1");
     context.put(HEADERS_PREFIX + "f2.headerKeyTest", "value2");
     context.put(HEADERS_PREFIX + "f2.headerKeyTest2", "value2-2");
@@ -190,7 +199,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1$");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file1$");
     Configurables.configure(source, context);
 
     for (int i = 0; i < 3; i++) {
@@ -268,7 +278,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "g1");
-    context.put(FILE_GROUPS_PREFIX + "g1", tmpDir.getAbsolutePath() + "/.*");
+    context.put(FILE_GROUPS_PREFIX + "g1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "g1" + FILE_GROUPS_SUFFIX_FILE, ".*");
 
     Configurables.configure(source, context);
     source.start();
@@ -307,6 +318,8 @@ public class TestTaildirSource {
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "fg");
     context.put(FILE_GROUPS_PREFIX + "fg", tmpDir.getAbsolutePath() + "/file.*");
+    context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(FILENAME_HEADER, "true");
     context.put(FILENAME_HEADER_KEY, "path");
 

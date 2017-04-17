@@ -21,6 +21,8 @@ public class TaildirSourceConfigurationConstants {
   /** Mapping for tailing file groups. */
   public static final String FILE_GROUPS = "filegroups";
   public static final String FILE_GROUPS_PREFIX = FILE_GROUPS + ".";
+  public static final String FILE_GROUPS_SUFFIX_DIR = ".parentDir";
+  public static final String FILE_GROUPS_SUFFIX_FILE = ".filePattern";
 
   /** Mapping for putting headers to events grouped by file groups. */
   public static final String HEADERS_PREFIX = "headers.";

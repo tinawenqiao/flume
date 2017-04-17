@@ -51,7 +51,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
@@ -61,7 +60,7 @@ public class TaildirSource extends AbstractSource implements
 
   private static final Logger logger = LoggerFactory.getLogger(TaildirSource.class);
 
-  private Map<String, String> filePaths;
+  private Table<String, String, String> filePaths;
   private Table<String, String, String> headerTable;
   private int batchSize;
   private String positionFilePath;
@@ -170,9 +169,6 @@ public class TaildirSource extends AbstractSource implements
 
     filePaths = selectByKeys(context.getSubProperties(FILE_GROUPS_PREFIX),
                              fileGroups.split("\\s+"));
-    Preconditions.checkState(!filePaths.isEmpty(),
-        "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX + "'");
-
     String homePath = System.getProperty("user.home").replace('\\', '/');
     positionFilePath = context.getString(POSITION_FILE, homePath + DEFAULT_POSITION_FILE);
     Path positionFile = Paths.get(positionFilePath);
@@ -218,11 +214,24 @@ public class TaildirSource extends AbstractSource implements
     }
   }
 
-  private Map<String, String> selectByKeys(Map<String, String> map, String[] keys) {
-    Map<String, String> result = Maps.newHashMap();
+  private Table<String, String, String> selectByKeys(Map<String, String> map, String[] keys) {
+    Table<String, String, String> result = HashBasedTable.create();
     for (String key : keys) {
-      if (map.containsKey(key)) {
-        result.put(key, map.get(key));
+      if (map.containsKey(key + FILE_GROUPS_SUFFIX_DIR)) {
+        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1),
+                map.get(key + FILE_GROUPS_SUFFIX_DIR));
+      } else {
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_DIR),
+            "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX
+                    + (key + FILE_GROUPS_SUFFIX_DIR) + "'");
+      }
+      if (map.containsKey(key + FILE_GROUPS_SUFFIX_FILE)) {
+        result.put(key, FILE_GROUPS_SUFFIX_FILE.substring(1),
+                map.get(key + FILE_GROUPS_SUFFIX_FILE));
+      } else {
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_FILE),
+                "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX +
+                        (key + FILE_GROUPS_SUFFIX_FILE + "'"));
       }
     }
     return result;
