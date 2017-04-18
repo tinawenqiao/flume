@@ -111,11 +111,9 @@ public class TestTaildirSource {
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "ab c");
     // Tail a.log and b.log
-    //context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/[ab].log");
     context.put(FILE_GROUPS_PREFIX + "ab" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
     context.put(FILE_GROUPS_PREFIX + "ab" + FILE_GROUPS_SUFFIX_FILE,  "[ab].log");
     // Tail files that starts with c.log
-    //context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/c.log.*");
     context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
     context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_FILE, "c.log.*");
 
@@ -317,7 +315,6 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "fg");
-    context.put(FILE_GROUPS_PREFIX + "fg", tmpDir.getAbsolutePath() + "/file.*");
     context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
     context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(FILENAME_HEADER, "true");
@@ -347,7 +344,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(MULTILINE, "true");
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "previous");
@@ -383,7 +381,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(MULTILINE, "true");
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "previous");
@@ -423,7 +422,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(MULTILINE, "true");
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "next");
@@ -460,7 +460,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(MULTILINE, "true");
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "next");
@@ -505,7 +506,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(MULTILINE, "true");
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "previous");
@@ -545,8 +547,9 @@ public class TestTaildirSource {
 
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
-    context.put(FILE_GROUPS, "fg");
-    context.put(FILE_GROUPS_PREFIX + "fg", tmpDir.getAbsolutePath() + "/file1");
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(MULTILINE, "true");
     context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
     context.put(MULTILINE_PATTERN_BELONG, "previous");

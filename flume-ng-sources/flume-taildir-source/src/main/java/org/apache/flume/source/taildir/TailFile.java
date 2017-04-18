@@ -214,8 +214,9 @@ public class TailFile {
             events.add(event);
           }
           if (bufferEvent != null) {
+            String lineCountStr = bufferEvent.getHeaders().get("lineCount");
             if (bufferEvent.getBody().length >= multilineMaxBytes
-                    || Integer.parseInt(bufferEvent.getHeaders().get("lineCount")) == multilineMaxLines) {
+                || Integer.parseInt(lineCountStr) == multilineMaxLines) {
               flushBufferEvent(events);
             }
           }
