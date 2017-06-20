@@ -189,21 +189,26 @@ public class TaildirSource extends AbstractSource implements
   private Table<String, String, String> selectByKeys(Map<String, String> map, String[] keys) {
     Table<String, String, String> result = HashBasedTable.create();
     for (String key : keys) {
-      if (map.containsKey(key + FILE_GROUPS_SUFFIX_DIR)) {
-        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1),
-                map.get(key + FILE_GROUPS_SUFFIX_DIR));
-      } else {
-        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_DIR),
-            "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX
-                    + (key + FILE_GROUPS_SUFFIX_DIR) + "'");
-      }
-      if (map.containsKey(key + FILE_GROUPS_SUFFIX_FILE)) {
+      if (map.containsKey(key + FILE_GROUPS_SUFFIX_DIR) &&
+              map.containsKey(key + FILE_GROUPS_SUFFIX_FILE)) {
+        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1), map.get(key + FILE_GROUPS_SUFFIX_DIR));
         result.put(key, FILE_GROUPS_SUFFIX_FILE.substring(1),
                 map.get(key + FILE_GROUPS_SUFFIX_FILE));
+      } else if (map.containsKey(key)) {
+        // Translate the old configuration.
+        File fg = new File(map.get(key));
+        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1), fg.getParent());
+        result.put(key, FILE_GROUPS_SUFFIX_FILE.substring(1), fg.getName());
+        logger.warn("{} is deprecated. Please use the parameter {}", FILE_GROUPS_PREFIX + key,
+                FILE_GROUPS_PREFIX + key + FILE_GROUPS_SUFFIX_DIR + " and " +
+                FILE_GROUPS_PREFIX + key + FILE_GROUPS_SUFFIX_FILE);
       } else {
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_DIR),
+                "Mapping for tailing files is empty or invalid: '"
+                        + FILE_GROUPS_PREFIX + (key + FILE_GROUPS_SUFFIX_DIR) + "'");
         Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_FILE),
-                "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX +
-                        (key + FILE_GROUPS_SUFFIX_FILE + "'"));
+                "Mapping for tailing files is empty or invalid: '"
+                        + FILE_GROUPS_PREFIX + (key + FILE_GROUPS_SUFFIX_FILE + "'"));
       }
     }
     return result;

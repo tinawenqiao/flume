@@ -329,4 +329,50 @@ public class TestTaildirSource {
     assertEquals(f1.getAbsolutePath(),
             e.getHeaders().get("path"));
   }
+
+  @Test
+  public void testOldProperties() throws  IOException{
+    File f1 = new File(tmpDir, "a.log");
+    File f2 = new File(tmpDir, "a.log.1");
+    File f3 = new File(tmpDir, "b.log");
+    File f4 = new File(tmpDir, "c.log.yyyy-MM-01");
+    File f5 = new File(tmpDir, "c.log.yyyy-MM-02");
+    Files.write("a.log\n", f1, Charsets.UTF_8);
+    Files.write("a.log.1\n", f2, Charsets.UTF_8);
+    Files.write("b.log\n", f3, Charsets.UTF_8);
+    Files.write("c.log.yyyy-MM-01\n", f4, Charsets.UTF_8);
+    Files.write("c.log.yyyy-MM-02\n", f5, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "ab c");
+    // Tail a.log and b.log
+    context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/[ab].log");
+    // Tail files that starts with c.log
+    context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/c.log.*");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int i = 0; i < 5; i++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(4, out.size());
+    // Make sure we got every file
+    assertTrue(out.contains("a.log"));
+    assertFalse(out.contains("a.log.1"));
+    assertTrue(out.contains("b.log"));
+    assertTrue(out.contains("c.log.yyyy-MM-01"));
+    assertTrue(out.contains("c.log.yyyy-MM-02"));
+
+  }
 }
