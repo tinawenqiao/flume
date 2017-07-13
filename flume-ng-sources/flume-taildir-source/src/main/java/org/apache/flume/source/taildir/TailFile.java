@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -200,6 +201,8 @@ public class TailFile {
             break;
           }
           Event event = null;
+          logger.debug("TailFile.readEvents: Current line = " + new String(line.line) +
+                  ". Current time : " + new Timestamp(System.currentTimeMillis()));
           switch (this.multilinePatternBelong) {
             case "next":
               event = readMultilineEventNext(line, match);
@@ -217,12 +220,20 @@ public class TailFile {
             String lineCountStr = bufferEvent.getHeaders().get("lineCount");
             if (bufferEvent.getBody().length >= multilineMaxBytes
                 || Integer.parseInt(lineCountStr) == multilineMaxLines) {
+              logger.debug("TailFile.readEvents: flush buffer event because exceed maxBytes or" +
+                      " maxLines. BufferEvent's message:" + new String(bufferEvent.getBody()));
               flushBufferEvent(events);
             }
           }
         }
       }
       if (needFlushTimeoutEvent()) {
+        long eventTime = Long.parseLong(
+                bufferEvent.getHeaders().get(TimestampInterceptor.Constants.TIMESTAMP));
+        logger.debug("TailFile.readEvents: flush buffer event because timeout. BufferEvent's " +
+                "message: " + new String(bufferEvent.getBody()) + ". And BufferEvent's time : " +
+                new Timestamp(eventTime)+ ",Current time : "+
+                new Timestamp(System.currentTimeMillis()));
         flushBufferEvent(events);
       }
     } else {
@@ -255,6 +266,8 @@ public class TailFile {
        */
       if (bufferEvent != null) {
         event = EventBuilder.withBody(bufferEvent.getBody());
+        logger.debug("TailFile.readMultilineEventPre: Create a event with message : " +
+                new String(bufferEvent.getBody()));
       }
       bufferEvent = null;
       bufferEvent = EventBuilder.withBody(lineBytes);
