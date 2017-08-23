@@ -66,7 +66,7 @@ public class TailFile {
   private int multilineMaxLines;
   private Event bufferEvent;
 
-  public TailFile(File file, Map<String, String> headers, long inode, long pos)
+  public TailFile(File file, Map<String, String> headers, long inode, long pos, Event bufferEvent)
       throws IOException {
     this.raf = new RandomAccessFile(file, "r");
     if (pos > 0) {
@@ -81,7 +81,7 @@ public class TailFile {
     this.headers = headers;
     this.oldBuffer = new byte[0];
     this.bufferPos = NEED_READING;
-    this.bufferEvent = null;
+    this.bufferEvent = bufferEvent;
   }
 
   public RandomAccessFile getRaf() {
@@ -172,6 +172,10 @@ public class TailFile {
     this.multilineMaxLines = multilineMaxLines;
   }
 
+  public Event getBufferEvent() {
+    return this.bufferEvent;
+  }
+
   public boolean updatePos(String path, long inode, long pos) throws IOException {
     if (this.inode == inode && this.path.equals(path)) {
       setPos(pos);
@@ -202,7 +206,9 @@ public class TailFile {
           }
           Event event = null;
           logger.debug("TailFile.readEvents: Current line = " + new String(line.line) +
-                  ". Current time : " + new Timestamp(System.currentTimeMillis()));
+                  ". Current time : " + new Timestamp(System.currentTimeMillis()) +
+                  ". Pos:" + pos +
+                  ". LineReadPos:" + lineReadPos + ",raf.getPointer:" + raf.getFilePointer());
           switch (this.multilinePatternBelong) {
             case "next":
               event = readMultilineEventNext(line, match);
@@ -364,6 +370,9 @@ public class TailFile {
   }
 
   private void readFile() throws IOException {
+    logger.debug("TailFile.readFile() Before read file: pos : " + pos + ", lineReadPos:" +
+            lineReadPos + ",raf.length():" + raf.length() + ", raf.getFilePointer():" +
+            raf.getFilePointer());
     if ((raf.length() - raf.getFilePointer()) < BUFFER_SIZE) {
       buffer = new byte[(int) (raf.length() - raf.getFilePointer())];
     } else {
