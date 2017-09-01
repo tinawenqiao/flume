@@ -274,7 +274,7 @@ public class TaildirSource extends AbstractSource implements
         logger.info("Interrupted while sleeping");
       }
     } catch (Throwable t) {
-      logger.error("Unable to tail files", t);
+      logger.error("Unable to tail files", t.getStackTrace());
       status = Status.BACKOFF;
     }
     return status;

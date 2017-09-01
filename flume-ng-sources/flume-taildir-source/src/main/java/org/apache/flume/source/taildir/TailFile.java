@@ -380,6 +380,9 @@ public class TailFile {
     }
     raf.read(buffer, 0, buffer.length);
     bufferPos = 0;
+    logger.debug("TailFile.readFile() After read file: pos : " + pos + ", lineReadPos:" +
+            lineReadPos + ",raf.length():" + raf.length() + ", raf.getFilePointer():" +
+            raf.getFilePointer());
   }
 
   private byte[] concatByteArrays(byte[] a, int startIdxA, int lenA,

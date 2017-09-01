@@ -33,10 +33,7 @@ import org.apache.flume.client.avro.ReliableEventReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
@@ -294,7 +291,13 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
             }
             if (f.length() < tf.getPos()) {
               logger.info("Pos " + tf.getPos() + " is larger than file size! "
-                  + "Restarting from pos 0, file: " + tf.getPath() + ", inode: " + inode);
+                  + "Restarting from pos 0, file: " + tf.getPath() + ", inode: " + inode +
+                      ", f.length():" + f.length());
+              RandomAccessFile tmp = new RandomAccessFile(f, "r");
+              byte[] fileContent = new byte[(int)(f.length())];
+              tmp.read(fileContent);
+              logger.info("Before restarting from pos 0, the file content:" +
+                      new String(fileContent));
               tf.updatePos(tf.getPath(), inode, 0);
             }
           }
