@@ -135,9 +135,13 @@ public class TaildirMatcher {
     this.parentDir = new File(dirPath);
     this.fileMatcher = FS.getPathMatcher("regex:" + filePattern);
 
-    // sanity check
-    Preconditions.checkState(parentDir.exists(),
-        "Directory does not exist: " + parentDir.getAbsolutePath());
+    try {
+      // sanity check
+      Preconditions.checkState(parentDir.exists(),
+              "Directory does not exist: " + parentDir.getAbsolutePath());
+    } catch (IllegalStateException e) {
+      logger.error("Directory does not exist: " + parentDir.getAbsolutePath());
+    }
   }
 
   /**

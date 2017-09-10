@@ -208,7 +208,8 @@ public class TailFile {
           logger.debug("TailFile.readEvents: Current line = " + new String(line.line) +
                   ". Current time : " + new Timestamp(System.currentTimeMillis()) +
                   ". Pos:" + pos +
-                  ". LineReadPos:" + lineReadPos + ",raf.getPointer:" + raf.getFilePointer());
+                  ". LineReadPos:" + lineReadPos + ",raf.getPointer:" + raf.getFilePointer() +
+                  ", file.length()=" + raf.length());
           switch (this.multilinePatternBelong) {
             case "next":
               event = readMultilineEventNext(line, match);
@@ -221,6 +222,9 @@ public class TailFile {
           }
           if (event != null) {
             events.add(event);
+            if (addByteOffset) {
+              event.getHeaders().put(BYTE_OFFSET_HEADER_KEY, String.valueOf(getLineReadPos()));
+            }
           }
           if (bufferEvent != null) {
             String lineCountStr = bufferEvent.getHeaders().get("lineCount");

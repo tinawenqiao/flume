@@ -273,8 +273,8 @@ public class TaildirSource extends AbstractSource implements
       } catch (InterruptedException e) {
         logger.info("Interrupted while sleeping");
       }
-    } catch (Throwable t) {
-      logger.error("Unable to tail files", t.getStackTrace());
+    } catch (Exception t) {
+      logger.error("Unable to tail files", t);
       status = Status.BACKOFF;
     }
     return status;
@@ -329,14 +329,26 @@ public class TaildirSource extends AbstractSource implements
     for (long inode : idleInodes) {
       TailFile tf = reader.getTailFiles().get(inode);
       if (tf.getRaf() != null) { // when file has not closed yet
-        logger.info("Before close file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
-                tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
-                ", buffer message:" + new String(tf.getBufferEvent().getBody()));
+        if (tf.getBufferEvent() != null) {
+          logger.info("Before close file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message:" + new String(tf.getBufferEvent().getBody()));
+        } else {
+          logger.info("Before close file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message is null.");
+        }
         tailFileProcess(tf, false);
         tf.close();
-        logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
-                tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
-          ", buffer message:" + new String(tf.getBufferEvent().getBody()));
+        if (tf.getBufferEvent() != null) {
+          logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message:" + new String(tf.getBufferEvent().getBody()));
+        } else {
+          logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message is null.");
+        }
       }
     }
     idleInodes.clear();
