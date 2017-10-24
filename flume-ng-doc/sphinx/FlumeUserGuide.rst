@@ -3915,7 +3915,7 @@ are named components, here is an example of how they are created through configu
   a1.sources.r1.interceptors = i1 i2
   a1.sources.r1.interceptors.i1.type = org.apache.flume.interceptor.HostInterceptor$Builder
   a1.sources.r1.interceptors.i1.preserveExisting = false
-  a1.sources.r1.interceptors.i1.hostHeader = hostname
+  a1.sources.r1.interceptors.i1.hostname= hostname
   a1.sources.r1.interceptors.i2.type = org.apache.flume.interceptor.TimestampInterceptor$Builder
   a1.sinks.k1.filePrefix = FlumeData.%{CollectorHost}.%Y-%m-%d
   a1.sinks.k1.channel = c1
@@ -3955,16 +3955,18 @@ Example for agent named a1:
 Host Interceptor
 ~~~~~~~~~~~~~~~~
 
-This interceptor inserts the hostname or IP address of the host that this agent is running on. It inserts a header
-with key ``host`` or a configured key whose value is the hostname or IP address of the host, based on configuration.
+This interceptor inserts the hostname or IP address of the host or both that this agent is running on. It inserts a header
+with a configured key whose value is the hostname or IP address of the host, based on configuration.
 
 ================  =======  ========================================================================
 Property Name     Default  Description
 ================  =======  ========================================================================
 **type**          --       The component type name, has to be ``host``
-preserveExisting  false    If the host header already exists, should it be preserved - true or false
-useIP             true     Use the IP Address if true, else use hostname.
-hostHeader        host     The header key to be used.
+preserveExisting  false    If the IP or hostname header already exists, should it be preserved - true or false
+useIP             true     Use the IP Address if true.
+useHostname       true     Use the hostname if true.
+ip                ip       The header key of ip to be used.
+hostname          hostname The header key of hostname to be used.
 ================  =======  ========================================================================
 
 Example for agent named a1:
@@ -3975,6 +3977,11 @@ Example for agent named a1:
   a1.channels = c1
   a1.sources.r1.interceptors = i1
   a1.sources.r1.interceptors.i1.type = host
+  a1.sources.r1.interceptors.i1.useIP = true
+  a1.sources.r1.interceptors.i1.useHostname = true
+  a1.sources.r1.interceptors.i1.ip = ipKey
+  a1.sources.r1.interceptors.i1.hostname = hostnameKey
+
 
 Static Interceptor
 ~~~~~~~~~~~~~~~~~~
