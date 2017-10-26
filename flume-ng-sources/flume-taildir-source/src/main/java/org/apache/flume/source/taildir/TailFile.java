@@ -22,7 +22,6 @@ package org.apache.flume.source.taildir;
 import com.google.common.collect.Lists;
 import org.apache.flume.Event;
 import org.apache.flume.event.EventBuilder;
-import org.apache.flume.interceptor.TimestampInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +111,7 @@ public class TailFile {
     if (bufferEvent != null) {
       long now = System.currentTimeMillis();
       long eventTime = Long.parseLong(
-              bufferEvent.getHeaders().get(TimestampInterceptor.Constants.TIMESTAMP));
+              bufferEvent.getHeaders().get("time"));
       if (multilineEventTimeoutSecs > 0 && (now - eventTime) > multilineEventTimeoutSecs * 1000) {
         return true;
       }
@@ -272,7 +271,7 @@ public class TailFile {
         bufferEvent.getHeaders().put("lineCount", "0");
       }
       long now = System.currentTimeMillis();
-      bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
+      bufferEvent.getHeaders().put("time", Long.toString(now));
     }
     return event;
   }
@@ -319,7 +318,7 @@ public class TailFile {
       }
     }
     long now = System.currentTimeMillis();
-    bufferEvent.getHeaders().put(TimestampInterceptor.Constants.TIMESTAMP, Long.toString(now));
+    bufferEvent.getHeaders().put("time", Long.toString(now));
   }
 
   private void flushBufferEvent(List<Event> events) {
