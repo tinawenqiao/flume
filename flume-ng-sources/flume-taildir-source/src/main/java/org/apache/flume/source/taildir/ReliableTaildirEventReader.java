@@ -176,6 +176,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     return tailFiles;
   }
 
+  public long getUpdateTime() {
+    return updateTime;
+  }
+
   public void setCurrentFile(TailFile currentFile) {
     this.currentFile = currentFile;
   }
@@ -254,6 +258,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       currentFile.setPos(pos);
       currentFile.setLastUpdated(updateTime);
       committed = true;
+      logger.debug("Reader.commit(): pos:" + pos + ", lastUpdatedTime:" + updateTime);
     }
   }
 
@@ -273,9 +278,14 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
         TailFile tf = tailFiles.get(inode);
         if (tf == null || !tf.getPath().equals(f.getAbsolutePath())) {
           long startPos = skipToEnd ? f.length() : 0;
-          tf = openFile(f, headers, inode, startPos);
+          tf = openFile(f, headers, inode, startPos, null);
         } else {
           boolean updated = tf.getLastUpdated() < f.lastModified() || tf.getPos() != f.length();
+                    TailFile tf = tailFiles.get(inode);
+          if (tf == null || !tf.getPath().equals(f.getAbsolutePath())) {
+            long startPos = skipToEnd ? f.length() : 0;
+            tf = openFile(f, headers, inode, tf.getPos(), tf.getBufferEvent());
+          } else {
           if (updated) {
             if (tf.getRaf() == null) {
               tf = openFile(f, headers, inode, tf.getPos());
@@ -305,10 +315,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     return inode;
   }
 
-  private TailFile openFile(File file, Map<String, String> headers, long inode, long pos) {
+  private TailFile openFile(File file, Map<String, String> headers, long inode, long pos,
+                            Event bufferEvent) {
     try {
       logger.info("Opening file: " + file + ", inode: " + inode + ", pos: " + pos);
-      return new TailFile(file, headers, inode, pos);
+      return new TailFile(file, headers, inode, pos, bufferEvent);
     } catch (IOException e) {
       throw new FlumeException("Failed opening file: " + file, e);
     }
