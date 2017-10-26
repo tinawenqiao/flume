@@ -278,7 +278,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
         TailFile tf = tailFiles.get(inode);
         if (tf == null || !tf.getPath().equals(f.getAbsolutePath())) {
           long startPos = skipToEnd ? f.length() : 0;
-          tf = openFile(f, headers, inode, tf.getPos(), null);
+          tf = openFile(f, headers, inode, startPos, null);
         } else {
           boolean updated = tf.getLastUpdated() < f.lastModified() || tf.getPos() != f.length();
           if (updated) {
