@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -362,10 +363,21 @@ public class TaildirSource extends AbstractSource implements
     public void run() {
       try {
         long now = System.currentTimeMillis();
+        String tailFilesList = "TailFiles list : ";
+        for (long inode : reader.getTailFiles().keySet()) {
+          TailFile tf = reader.getTailFiles().get(inode);
+          tailFilesList = tailFilesList + "{ inode:" + inode + ", tf.path:" + tf.getPath() +
+                  ", file.lastupdate:" + new Timestamp(tf.getLastUpdated()) + ", tf.idle:" +
+                  (tf.getLastUpdated() + idleTimeout < now) +", tf.raf!=null: " +
+                  (tf.getRaf() != null) + "}, ";
+        }
+        logger.error("Not real error. " + tailFilesList);
         for (TailFile tf : reader.getTailFiles().values()) {
           if (tf.getLastUpdated() + idleTimeout < now && tf.getRaf() != null) {
             logger.debug("TaildirSource.idleFileCheckerRunnable()-Add File: {" + tf.getPath() +
                     "} to idleInodes.");
+            logger.error("Not real error. TaildirSource.idleFileCheckerRunnable()-Add File: {" +
+                    tf.getPath() + "} , inode:" + tf.getInode()+ " to idleInodes.");
             idleInodes.add(tf.getInode());
           }
         }

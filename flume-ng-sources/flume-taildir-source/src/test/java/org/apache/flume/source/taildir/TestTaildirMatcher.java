@@ -188,11 +188,13 @@ public class TestTaildirMatcher {
     assertTrue(msgNoMatch, files.isEmpty());
   }
 
+  /**
   @Test(expected = IllegalStateException.class)
   public void testNonExistingDir() {
     TaildirMatcher tm = new TaildirMatcher("exception", "/abracadabra/doesntexist/", ".*",
                                            isCachingNeeded);
   }
+   */
 
   @Test
   public void testDirectoriesAreNotListed() throws Exception {

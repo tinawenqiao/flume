@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -274,6 +275,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     updateTime = System.currentTimeMillis();
     List<Long> updatedInodes = Lists.newArrayList();
 
+    String debugStr = "tailFiles List : ";
     for (TaildirMatcher taildir : taildirCache) {
       Map<String, String> headers = headerTable.row(taildir.getFileGroup());
 
@@ -304,8 +306,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
           tf.setNeedTail(updated);
         }
         tailFiles.put(inode, tf);
+        debugStr = debugStr + "{ inode:" + inode + ", tf.path:" + tf.getPath() + "} ";
         updatedInodes.add(inode);
       }
+      //logger.error("Not real error. " + debugStr);
     }
     return updatedInodes;
   }
@@ -324,6 +328,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
                             Event bufferEvent) {
     try {
       logger.info("Opening file: " + file + ", inode: " + inode + ", pos: " + pos);
+      logger.error("Not real error. Opening file: " + file + ", inode: " + inode + ", pos: " + pos);
       return new TailFile(file, headers, inode, pos, bufferEvent);
     } catch (IOException e) {
       throw new FlumeException("Failed opening file: " + file, e);
