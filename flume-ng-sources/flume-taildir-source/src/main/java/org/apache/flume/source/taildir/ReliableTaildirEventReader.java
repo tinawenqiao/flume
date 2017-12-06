@@ -275,7 +275,6 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     updateTime = System.currentTimeMillis();
     List<Long> updatedInodes = Lists.newArrayList();
 
-    String debugStr = "tailFiles List : ";
     for (TaildirMatcher taildir : taildirCache) {
       Map<String, String> headers = headerTable.row(taildir.getFileGroup());
 
@@ -295,21 +294,14 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
               logger.info("Pos " + tf.getPos() + " is larger than file size! "
                   + "Restarting from pos 0, file: " + tf.getPath() + ", inode: " + inode +
                       ", f.length():" + f.length());
-              RandomAccessFile tmp = new RandomAccessFile(f, "r");
-              byte[] fileContent = new byte[(int)(f.length())];
-              tmp.read(fileContent);
-              logger.info("Before restarting from pos 0, the file content:" +
-                      new String(fileContent));
               tf.updatePos(tf.getPath(), inode, 0);
             }
           }
           tf.setNeedTail(updated);
         }
         tailFiles.put(inode, tf);
-        debugStr = debugStr + "{ inode:" + inode + ", tf.path:" + tf.getPath() + "} ";
         updatedInodes.add(inode);
       }
-      //logger.error("Not real error. " + debugStr);
     }
     return updatedInodes;
   }
