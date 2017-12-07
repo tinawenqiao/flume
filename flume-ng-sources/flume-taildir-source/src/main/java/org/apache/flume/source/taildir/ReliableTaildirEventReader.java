@@ -280,6 +280,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
 
       for (File f : taildir.getMatchingFiles()) {
         long inode = getInode(f);
+        if (inode == -1) continue;
         TailFile tf = tailFiles.get(inode);
         if (tf == null || !tf.getPath().equals(f.getAbsolutePath())) {
           long startPos = skipToEnd ? f.length() : 0;
@@ -312,15 +313,19 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
 
 
   private long getInode(File file) throws IOException {
-    long inode = (long) Files.getAttribute(file.toPath(), "unix:ino");
-    return inode;
+    try {
+      long inode = (long) Files.getAttribute(file.toPath(), "unix:ino");
+      return inode;
+    } catch (IOException e) {
+      logger.error("Failed getting the inode of file: " + file, e);
+      return -1;
+    }
   }
 
   private TailFile openFile(File file, Map<String, String> headers, long inode, long pos,
                             Event bufferEvent) {
     try {
       logger.info("Opening file: " + file + ", inode: " + inode + ", pos: " + pos);
-      logger.error("Not real error. Opening file: " + file + ", inode: " + inode + ", pos: " + pos);
       return new TailFile(file, headers, inode, pos, bufferEvent);
     } catch (IOException e) {
       throw new FlumeException("Failed opening file: " + file, e);

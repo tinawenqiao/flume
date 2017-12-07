@@ -452,8 +452,6 @@ public class TailFile {
       raf = null;
       long now = System.currentTimeMillis();
       setLastUpdated(now);
-      logger.error("Not real error. Sucessfully close file: " + path + ", inode: " + inode
-              + ". Current time is: " + new Timestamp(now));
     } catch (IOException e) {
       logger.error("Failed closing file: " + path + ", inode: " + inode, e);
     }
