@@ -255,8 +255,19 @@ public class TaildirSource extends AbstractSource implements
   public Status process() {
     Status status = Status.READY;
     try {
+      Map<Long, TailFile> olderTailFiles = reader.getTailFiles();
       existingInodes.clear();
       existingInodes.addAll(reader.updateTailFiles());
+      for (Map.Entry<Long, TailFile> entry : olderTailFiles.entrySet()) {
+        if (!existingInodes.contains(entry.getKey())) {
+          TailFile tf = entry.getValue();
+          logger.debug("Last acccess to Inode:" + entry.getKey() + ", path = " + tf.getPath() +
+                  " needs closed.");
+          if (tf.getRaf() != null) {
+            tf.close();
+          }
+        }
+      }
       for (long inode : existingInodes) {
         TailFile tf = reader.getTailFiles().get(inode);
         if (tf.needTail() || tf.needFlushTimeoutEvent()) {
