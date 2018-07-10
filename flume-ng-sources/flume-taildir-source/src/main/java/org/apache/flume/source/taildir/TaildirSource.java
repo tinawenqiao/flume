@@ -262,7 +262,7 @@ public class TaildirSource extends AbstractSource implements
         if (tf.needTail() || tf.needFlushTimeoutEvent()) {
           if (tf.getBufferEvent() != null) {
             logger.debug("TaildirSource.process() bufferEvent is not null. Buffer message:" +
-            new String(tf.getBufferEvent().getBody()));
+			    new String(tf.getBufferEvent().getBody()));
           }
           tailFileProcess(tf, true);
         }
