@@ -99,13 +99,12 @@
         <exclude>**/.project</exclude>
         <exclude>**/.settings/**</exclude>
         <exclude>lib/**</exclude>
-        <exclude>**/*.iml</exclude>
       </excludes>
 
       <includes>
         <include>.gitignore</include>
         <include>DEVNOTES</include>
-        <include>README.md</include>
+        <include>README</include>
         <include>LICENSE</include>
         <include>NOTICE</include>
         <include>CHANGELOG</include>
@@ -116,7 +115,6 @@
         <include>flume-ng-doc/**</include>
         <include>flume-ng-tests/**</include>
         <include>dev-support/**</include>
-        <include>doap_Flume.rdf</include>
       </includes>
     </fileSet>
   </fileSets>

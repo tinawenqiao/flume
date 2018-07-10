@@ -36,6 +36,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -249,13 +250,6 @@ public class TestBucketWriter {
     final int ROLL_INTERVAL = 1000; // seconds. Make sure it doesn't change in course of test
     final String suffix = null;
 
-    MockHDFSWriter hdfsWriter = new MockHDFSWriter();
-    BucketWriter bucketWriter = new BucketWriter(
-        ROLL_INTERVAL, 0, 0, 0, ctx, "/tmp", "file", "", ".tmp", suffix, null,
-        SequenceFile.CompressionType.NONE, hdfsWriter, timedRollerPool, proxy,
-        new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()), 0, null, null, 30000,
-        Executors.newSingleThreadExecutor(), 0, 0);
-
     // Need to override system time use for test so we know what to expect
     final long testTime = System.currentTimeMillis();
     Clock testClock = new Clock() {
@@ -263,7 +257,13 @@ public class TestBucketWriter {
         return testTime;
       }
     };
-    bucketWriter.setClock(testClock);
+
+    MockHDFSWriter hdfsWriter = new MockHDFSWriter();
+    BucketWriter bucketWriter = new BucketWriter(
+        ROLL_INTERVAL, 0, 0, 0, ctx, "/tmp", "file", "", ".tmp", suffix, null,
+        SequenceFile.CompressionType.NONE, hdfsWriter, timedRollerPool, proxy,
+        new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()), 0, null, null, 30000,
+        Executors.newSingleThreadExecutor(), 0, 0, testClock);
 
     Event e = EventBuilder.withBody("foo", Charsets.UTF_8);
     bucketWriter.append(e);
@@ -277,13 +277,6 @@ public class TestBucketWriter {
     final int ROLL_INTERVAL = 1000; // seconds. Make sure it doesn't change in course of test
     final String suffix = ".avro";
 
-    MockHDFSWriter hdfsWriter = new MockHDFSWriter();
-    BucketWriter bucketWriter = new BucketWriter(
-        ROLL_INTERVAL, 0, 0, 0, ctx, "/tmp", "file", "", ".tmp", suffix, null,
-        SequenceFile.CompressionType.NONE, hdfsWriter, timedRollerPool, proxy,
-        new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()), 0, null, null, 30000,
-        Executors.newSingleThreadExecutor(), 0, 0);
-
     // Need to override system time use for test so we know what to expect
 
     final long testTime = System.currentTimeMillis();
@@ -293,7 +286,14 @@ public class TestBucketWriter {
         return testTime;
       }
     };
-    bucketWriter.setClock(testClock);
+
+    MockHDFSWriter hdfsWriter = new MockHDFSWriter();
+    BucketWriter bucketWriter = new BucketWriter(
+        ROLL_INTERVAL, 0, 0, 0, ctx, "/tmp", "file", "", ".tmp", suffix, null,
+        SequenceFile.CompressionType.NONE, hdfsWriter, timedRollerPool, proxy,
+        new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()), 0, null, null, 30000,
+        Executors.newSingleThreadExecutor(), 0, 0, testClock);
+
 
     Event e = EventBuilder.withBody("foo", Charsets.UTF_8);
     bucketWriter.append(e);
@@ -309,12 +309,6 @@ public class TestBucketWriter {
     final String suffix = ".foo";
 
     MockHDFSWriter hdfsWriter = new MockHDFSWriter();
-    BucketWriter bucketWriter = new BucketWriter(
-        ROLL_INTERVAL, 0, 0, 0, ctx, "/tmp", "file", "", ".tmp", suffix,
-        HDFSEventSink.getCodec("gzip"), SequenceFile.CompressionType.BLOCK, hdfsWriter,
-        timedRollerPool, proxy, new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()),
-        0, null, null, 30000, Executors.newSingleThreadExecutor(), 0, 0
-    );
 
     // Need to override system time use for test so we know what to expect
     final long testTime = System.currentTimeMillis();
@@ -324,7 +318,15 @@ public class TestBucketWriter {
         return testTime;
       }
     };
-    bucketWriter.setClock(testClock);
+
+    BucketWriter bucketWriter = new BucketWriter(
+        ROLL_INTERVAL, 0, 0, 0, ctx, "/tmp", "file", "", ".tmp", suffix,
+        HDFSEventSink.getCodec("gzip"), SequenceFile.CompressionType.BLOCK, hdfsWriter,
+        timedRollerPool, proxy, new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()),
+        0, null, null, 30000, Executors.newSingleThreadExecutor(), 0, 0, testClock
+    );
+
+
 
     Event e = EventBuilder.withBody("foo", Charsets.UTF_8);
     bucketWriter.append(e);
@@ -446,5 +448,53 @@ public class TestBucketWriter {
     Assert.assertTrue("Expected " + numberOfRetriesRequired + " " +
                       "but got " + bucketWriter.renameTries.get(),
                       bucketWriter.renameTries.get() == numberOfRetriesRequired);
+  }
+
+  // Test that we don't swallow IOExceptions in secure mode. We should close the bucket writer
+  // and rethrow the exception. Regression test for FLUME-3049.
+  @Test
+  public void testRotateBucketOnIOException() throws IOException, InterruptedException {
+    MockHDFSWriter hdfsWriter = Mockito.spy(new MockHDFSWriter());
+    PrivilegedExecutor ugiProxy =
+        FlumeAuthenticationUtil.getAuthenticator(null, null).proxyAs("alice");
+
+    final int ROLL_COUNT = 1; // Cause a roll after every successful append().
+    BucketWriter bucketWriter = new BucketWriter(
+        0, 0, ROLL_COUNT, 0, ctx, "/tmp", "file", "", ".tmp", null, null,
+        SequenceFile.CompressionType.NONE, hdfsWriter, timedRollerPool, ugiProxy,
+        new SinkCounter("test-bucket-writer-" + System.currentTimeMillis()), 0, null, null, 30000,
+        Executors.newSingleThreadExecutor(), 0, 0);
+
+    Event e = EventBuilder.withBody("foo", Charsets.UTF_8);
+
+    // Write one event successfully.
+    bucketWriter.append(e);
+
+    // Fail the next write.
+    IOException expectedIOException = new IOException("Test injected IOException");
+    Mockito.doThrow(expectedIOException).when(hdfsWriter)
+        .append(Mockito.any(Event.class));
+
+    // The second time we try to write we should get an IOException.
+    try {
+      bucketWriter.append(e);
+      Assert.fail("Expected IOException wasn't thrown during append");
+    } catch (IOException ex) {
+      Assert.assertEquals(expectedIOException, ex);
+      logger.info("Caught expected IOException", ex);
+    }
+
+    // The third time we try to write we should get a BucketClosedException, because the
+    // BucketWriter should attempt to close itself before rethrowing the IOException on the first
+    // call.
+    try {
+      bucketWriter.append(e);
+      Assert.fail("BucketWriter should be already closed, BucketClosedException expected");
+    } catch (BucketClosedException ex) {
+      logger.info("Caught expected BucketClosedException", ex);
+    }
+
+    Assert.assertEquals("events written", 1, hdfsWriter.getEventsWritten());
+    Assert.assertEquals("2 files should be closed", 2, hdfsWriter.getFilesClosed());
   }
 }

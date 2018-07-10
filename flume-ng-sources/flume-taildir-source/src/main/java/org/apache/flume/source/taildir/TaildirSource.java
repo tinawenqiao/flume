@@ -51,7 +51,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
@@ -61,7 +60,7 @@ public class TaildirSource extends AbstractSource implements
 
   private static final Logger logger = LoggerFactory.getLogger(TaildirSource.class);
 
-  private Map<String, String> filePaths;
+  private Table<String, String, String> filePaths;
   private Table<String, String, String> headerTable;
   private int batchSize;
   private String positionFilePath;
@@ -86,6 +85,13 @@ public class TaildirSource extends AbstractSource implements
   private Long maxBackOffSleepInterval;
   private boolean fileHeader;
   private String fileHeaderKey;
+  private boolean multiline;
+  private String multilinePattern;
+  private String multilinePatternBelong;
+  private boolean multilinePatternMatched;
+  private long multilineEventTimeoutSecs;
+  private int multilineMaxBytes;
+  private int multilineMaxLines;
 
   @Override
   public synchronized void start() {
@@ -100,6 +106,13 @@ public class TaildirSource extends AbstractSource implements
           .cachePatternMatching(cachePatternMatching)
           .annotateFileName(fileHeader)
           .fileNameHeader(fileHeaderKey)
+          .multiline(multiline)
+          .multilinePattern(multilinePattern)
+          .multilinePatternBelong(multilinePatternBelong)
+          .multilinePatternMatched(multilinePatternMatched)
+          .eventTimeoutSecs(multilineEventTimeoutSecs)
+          .multilineMaxBytes(multilineMaxBytes)
+          .multilineMaxLines(multilineMaxLines)
           .build();
     } catch (IOException e) {
       throw new FlumeException("Error instantiating ReliableTaildirEventReader", e);
@@ -156,9 +169,6 @@ public class TaildirSource extends AbstractSource implements
 
     filePaths = selectByKeys(context.getSubProperties(FILE_GROUPS_PREFIX),
                              fileGroups.split("\\s+"));
-    Preconditions.checkState(!filePaths.isEmpty(),
-        "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX + "'");
-
     String homePath = System.getProperty("user.home").replace('\\', '/');
     positionFilePath = context.getString(POSITION_FILE, homePath + DEFAULT_POSITION_FILE);
     Path positionFile = Paths.get(positionFilePath);
@@ -184,17 +194,44 @@ public class TaildirSource extends AbstractSource implements
             DEFAULT_FILE_HEADER);
     fileHeaderKey = context.getString(FILENAME_HEADER_KEY,
             DEFAULT_FILENAME_HEADER_KEY);
+    multiline = context.getBoolean(MULTILINE, DEFAULT_MULTILINE);
+    multilinePattern = context.getString(MULTILINE_PATTERN, DEFAULT_MULTILINE_PATTERN);
+    multilinePatternBelong = context.getString(MULTILINE_PATTERN_BELONG,
+            DEFAULT_MULTILINE_PATTERN_BELONG);
+    Preconditions.checkState(multilinePatternBelong.equals("previous") ||
+            multilinePatternBelong.equals("next"),
+            "Config MultilinePatternBelong = " + multilinePatternBelong + " is invalid. Only" +
+                    " support 'previous' or 'next'");
+    multilinePatternMatched = context.getBoolean(MULTILINE_PATTERN_MATCHED,
+            DEFAULT_MULTILINE_PATTERN_MATCHED);
+    multilineEventTimeoutSecs = context.getInteger(MULTILINE_EVENT_TIMEOUT_SECONDS,
+            DEFAULT_MULTILINE_EVENT_TIMEOUT_SECONDS);
+    multilineMaxBytes = context.getInteger(MULTILINE_MAX_BYTES, DEFAULT_MULTILINE_MAX_BYTES);
+    multilineMaxLines = context.getInteger(MULTILINE_MAX_LINES, DEFAULT_MULTILINE_MAX_LINES);
 
     if (sourceCounter == null) {
       sourceCounter = new SourceCounter(getName());
     }
   }
 
-  private Map<String, String> selectByKeys(Map<String, String> map, String[] keys) {
-    Map<String, String> result = Maps.newHashMap();
+  private Table<String, String, String> selectByKeys(Map<String, String> map, String[] keys) {
+    Table<String, String, String> result = HashBasedTable.create();
     for (String key : keys) {
-      if (map.containsKey(key)) {
-        result.put(key, map.get(key));
+      if (map.containsKey(key + FILE_GROUPS_SUFFIX_DIR)) {
+        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1),
+                map.get(key + FILE_GROUPS_SUFFIX_DIR));
+      } else {
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_DIR),
+            "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX
+                    + (key + FILE_GROUPS_SUFFIX_DIR) + "'");
+      }
+      if (map.containsKey(key + FILE_GROUPS_SUFFIX_FILE)) {
+        result.put(key, FILE_GROUPS_SUFFIX_FILE.substring(1),
+                map.get(key + FILE_GROUPS_SUFFIX_FILE));
+      } else {
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_FILE),
+                "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX +
+                        (key + FILE_GROUPS_SUFFIX_FILE + "'"));
       }
     }
     return result;
@@ -222,7 +259,11 @@ public class TaildirSource extends AbstractSource implements
       existingInodes.addAll(reader.updateTailFiles());
       for (long inode : existingInodes) {
         TailFile tf = reader.getTailFiles().get(inode);
-        if (tf.needTail()) {
+        if (tf.needTail() || tf.needFlushTimeoutEvent()) {
+          if (tf.getBufferEvent() != null) {
+            logger.debug("TaildirSource.process() bufferEvent is not null. Buffer message:" +
+            new String(tf.getBufferEvent().getBody()));
+          }
           tailFileProcess(tf, true);
         }
       }
@@ -232,7 +273,7 @@ public class TaildirSource extends AbstractSource implements
       } catch (InterruptedException e) {
         logger.info("Interrupted while sleeping");
       }
-    } catch (Throwable t) {
+    } catch (Exception t) {
       logger.error("Unable to tail files", t);
       status = Status.BACKOFF;
     }
@@ -255,6 +296,11 @@ public class TaildirSource extends AbstractSource implements
       reader.setCurrentFile(tf);
       List<Event> events = reader.readEvents(batchSize, backoffWithoutNL);
       if (events.isEmpty()) {
+        if (tf.getBufferEvent() != null) {
+          long pos = tf.getLineReadPos();
+          tf.setPos(pos);
+          tf.setLastUpdated(reader.getUpdateTime());
+        }
         break;
       }
       sourceCounter.addToEventReceivedCount(events.size());
@@ -283,9 +329,26 @@ public class TaildirSource extends AbstractSource implements
     for (long inode : idleInodes) {
       TailFile tf = reader.getTailFiles().get(inode);
       if (tf.getRaf() != null) { // when file has not closed yet
+        if (tf.getBufferEvent() != null) {
+          logger.info("Before close file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message:" + new String(tf.getBufferEvent().getBody()));
+        } else {
+          logger.info("Before close file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message is null.");
+        }
         tailFileProcess(tf, false);
         tf.close();
-        logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " + tf.getPos());
+        if (tf.getBufferEvent() != null) {
+          logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message:" + new String(tf.getBufferEvent().getBody()));
+        } else {
+          logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                  tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                  ", buffer message is null.");
+        }
       }
     }
     idleInodes.clear();
@@ -301,6 +364,8 @@ public class TaildirSource extends AbstractSource implements
         long now = System.currentTimeMillis();
         for (TailFile tf : reader.getTailFiles().values()) {
           if (tf.getLastUpdated() + idleTimeout < now && tf.getRaf() != null) {
+            logger.debug("TaildirSource.idleFileCheckerRunnable()-Add File: {" + tf.getPath() +
+                    "} to idleInodes.");
             idleInodes.add(tf.getInode());
           }
         }

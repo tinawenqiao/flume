@@ -33,12 +33,21 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.PathMatcher;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.FileVisitor;
+import java.nio.file.FileVisitResult;
+import java.nio.file.SimpleFileVisitor;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.EnumSet;
+import java.util.Set;
+
+import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 
 /**
  * Identifies and caches the files matched by single file pattern for {@code TAILDIR} source.
@@ -73,13 +82,14 @@ public class TaildirMatcher {
   private final boolean cachePatternMatching;
   // id from configuration
   private final String fileGroup;
+  // matcher created with file group full path's regex
+  private final PathMatcher fileMatcher;
+
   // plain string of the desired files from configuration
   private final String filePattern;
 
   // directory monitored for changes
   private final File parentDir;
-  // cached instance for filtering files based on filePattern
-  private final DirectoryStream.Filter<Path> fileFilter;
 
   // system time in milliseconds, stores the last modification time of the
   // parent directory seen by the last check, rounded to seconds
@@ -96,43 +106,42 @@ public class TaildirMatcher {
   /**
    * Package accessible constructor. From configuration context it represents a single
    * <code>filegroup</code> and encapsulates the corresponding <code>filePattern</code>.
-   * <code>filePattern</code> consists of two parts: first part has to be a valid path to an
-   * existing parent directory, second part has to be a valid regex
+   * <code>dirPath</code> a valid path to an existing parent directory
+   * <code>filePath</code> a valid regex of path to a file, directory can be included in the path
    * {@link java.util.regex.Pattern} that match any non-hidden file names within parent directory
-   * . A valid example for filePattern is <code>/dir0/dir1/.*</code> given
-   * <code>/dir0/dir1</code> is an existing directory structure readable by the running user.
+   * . A valid example for filePath is <code>dir1/.*</code> given
+   * <code>/dir0</code> is an existing directory structure readable by the running user.
    * <p></p>
    * An instance of this class is created for each fileGroup
    *
    * @param fileGroup arbitrary name of the group given by the config
-   * @param filePattern parent directory plus regex pattern. No wildcards are allowed in directory
-   *                    name
+   * @param dirPath Absolute parent directory path of the file group. Neither wildcards nor regular
+   *                expressions (and not file system patterns) are allowed in directory.
+   * @param filePath Relative file path of the file group's parent directory. Directory can be
+   *                 included. Regular expression (and not file system patterns) can be used
+   *                 in directory and filename.
    * @param cachePatternMatching default true, recommended in every setup especially with huge
    *                             parent directories. Don't set when local system clock is not used
    *                             for stamping mtime (eg: remote filesystems)
    * @see TaildirSourceConfigurationConstants
    */
-  TaildirMatcher(String fileGroup, String filePattern, boolean cachePatternMatching) {
+  TaildirMatcher(String fileGroup, String dirPath, String filePath,
+                 boolean cachePatternMatching) {
     // store whatever came from configuration
     this.fileGroup = fileGroup;
-    this.filePattern = filePattern;
+    File f = new File(dirPath + File.separator + filePath);
+    this.filePattern = f.getAbsolutePath();
     this.cachePatternMatching = cachePatternMatching;
+    this.parentDir = new File(dirPath);
+    this.fileMatcher = FS.getPathMatcher("regex:" + filePattern);
 
-    // calculate final members
-    File f = new File(filePattern);
-    this.parentDir = f.getParentFile();
-    String regex = f.getName();
-    final PathMatcher matcher = FS.getPathMatcher("regex:" + regex);
-    this.fileFilter = new DirectoryStream.Filter<Path>() {
-      @Override
-      public boolean accept(Path entry) throws IOException {
-        return matcher.matches(entry.getFileName()) && !Files.isDirectory(entry);
-      }
-    };
-
-    // sanity check
-    Preconditions.checkState(parentDir.exists(),
-        "Directory does not exist: " + parentDir.getAbsolutePath());
+    try {
+      // sanity check
+      Preconditions.checkState(parentDir.exists(),
+              "Directory does not exist: " + parentDir.getAbsolutePath());
+    } catch (IllegalStateException e) {
+      logger.error("Directory does not exist: " + parentDir.getAbsolutePath());
+    }
   }
 
   /**
@@ -204,29 +213,40 @@ public class TaildirMatcher {
 
   /**
    * Provides the actual files within the parentDir which
-   * files are matching the regex pattern. Each invocation uses {@link DirectoryStream}
+   * files are matching the regex pattern. Each invocation uses {@link FileVisitor}
    * to identify matching files.
    *
-   * Files returned by this call are weakly consistent (see {@link DirectoryStream}).
-   * It does not freeze the directory while iterating, so it may (or may not) reflect updates
-   * to the directory that occur during the call. In which case next call will return those files.
+   * Files returned by this call is a visitor of each file in a file tree (see {@link FileVisitor}).
    *
-   * @return List of files matching the pattern unsorted. No recursion. No directories.
+   * @return List of files matching the pattern unsorted.
    * If nothing matches then returns an empty list. If I/O issue occurred then returns the list
    * collected to the point when exception was thrown.
    *
-   * @see DirectoryStream
-   * @see DirectoryStream.Filter
+   * @see FileVisitor
    */
   private List<File> getMatchingFilesNoCache() {
-    List<File> result = Lists.newArrayList();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(parentDir.toPath(), fileFilter)) {
-      for (Path entry : stream) {
-        result.add(entry.toFile());
-      }
+    final List<File> result = Lists.newArrayList();
+    try {
+      Set options = EnumSet.of(FOLLOW_LINKS);
+      Files.walkFileTree(Paths.get(parentDir.toString()), options, Integer.MAX_VALUE,
+              new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            if (fileMatcher.matches(file.toAbsolutePath())) {
+              result.add(file.toFile());
+            }
+            return FileVisitResult.CONTINUE;
+          }
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) {
+            return FileVisitResult.CONTINUE;
+          }
+          });
     } catch (IOException e) {
       logger.error("I/O exception occurred while listing parent directory. " +
                    "Files already matched will be returned. " + parentDir.toPath(), e);
+    } catch (IllegalArgumentException e) {
+      logger.error("Filegroup Pattern (" + getFileGroup() + "=" + filePattern + ") Is Illegal.", e);
     }
     return result;
   }

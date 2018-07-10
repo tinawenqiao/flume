@@ -33,15 +33,16 @@ import org.apache.flume.client.avro.ReliableEventReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
+
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_DIR;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -59,14 +60,25 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private boolean committed = true;
   private final boolean annotateFileName;
   private final String fileNameHeader;
+  private boolean multiline;
+  private String multilinePattern;
+  private String multilinePatternBelong;
+  private boolean multilinePatternMatched;
+  private long multilineEventTimeoutSecs;
+  private int multilineMaxBytes;
+  private int multilineMaxLines;
 
   /**
    * Create a ReliableTaildirEventReader to watch the given directory.
    */
-  private ReliableTaildirEventReader(Map<String, String> filePaths,
+  private ReliableTaildirEventReader(Table<String, String, String> filePaths,
       Table<String, String, String> headerTable, String positionFilePath,
       boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
-      boolean annotateFileName, String fileNameHeader) throws IOException {
+      boolean annotateFileName, String fileNameHeader,
+      boolean multiline, String multilinePattern,
+      String multilinePatternBelong, boolean multilinePatternMatched, long eventTimeoutSecs,
+      int multilineMaxBytes, int multilineMaxLines)
+          throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
     Preconditions.checkNotNull(positionFilePath);
@@ -77,8 +89,12 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     }
 
     List<TaildirMatcher> taildirCache = Lists.newArrayList();
-    for (Entry<String, String> e : filePaths.entrySet()) {
-      taildirCache.add(new TaildirMatcher(e.getKey(), e.getValue(), cachePatternMatching));
+    Set<String> filegroups = filePaths.rowKeySet();
+    for (String fg: filegroups) {
+      Map<String, String> paths = filePaths.row(fg);
+      String parentDir = paths.get(FILE_GROUPS_SUFFIX_DIR.substring(1));
+      String filePath = paths.get(FILE_GROUPS_SUFFIX_FILE.substring(1));
+      taildirCache.add(new TaildirMatcher(fg, parentDir, filePath, cachePatternMatching));
     }
     logger.info("taildirCache: " + taildirCache.toString());
     logger.info("headerTable: " + headerTable.toString());
@@ -89,6 +105,13 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.cachePatternMatching = cachePatternMatching;
     this.annotateFileName = annotateFileName;
     this.fileNameHeader = fileNameHeader;
+    this.multiline = multiline;
+    this.multilinePattern = multilinePattern;
+    this.multilinePatternBelong = multilinePatternBelong;
+    this.multilinePatternMatched = multilinePatternMatched;
+    this.multilineEventTimeoutSecs = eventTimeoutSecs;
+    this.multilineMaxBytes = multilineMaxBytes;
+    this.multilineMaxLines = multilineMaxLines;
     updateTailFiles(skipToEnd);
 
     logger.info("Updating position from position file: " + positionFilePath);
@@ -158,6 +181,10 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     return tailFiles;
   }
 
+  public long getUpdateTime() {
+    return updateTime;
+  }
+
   public void setCurrentFile(TailFile currentFile) {
     this.currentFile = currentFile;
   }
@@ -191,6 +218,15 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       logger.info("Last read was never committed - resetting position");
       long lastPos = currentFile.getPos();
       currentFile.updateFilePos(lastPos);
+    }
+    if (multiline) {
+      currentFile.setMultiline(multiline);
+      currentFile.setMultilinePattern(multilinePattern);
+      currentFile.setMultilinePatternBelong(multilinePatternBelong);
+      currentFile.setMultilinePatternMatched(multilinePatternMatched);
+      currentFile.setMultilineEventTimeoutSecs(multilineEventTimeoutSecs);
+      currentFile.setMultilineMaxBytes(multilineMaxBytes);
+      currentFile.setMultilineMaxLines(multilineMaxLines);
     }
     List<Event> events = currentFile.readEvents(numEvents, backoffWithoutNL, addByteOffset);
     if (events.isEmpty()) {
@@ -227,6 +263,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       currentFile.setPos(pos);
       currentFile.setLastUpdated(updateTime);
       committed = true;
+      logger.debug("Reader.commit(): pos:" + pos + ", lastUpdatedTime:" + updateTime);
     }
   }
 
@@ -243,19 +280,21 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
 
       for (File f : taildir.getMatchingFiles()) {
         long inode = getInode(f);
+        if (inode == -1) continue;
         TailFile tf = tailFiles.get(inode);
         if (tf == null || !tf.getPath().equals(f.getAbsolutePath())) {
           long startPos = skipToEnd ? f.length() : 0;
-          tf = openFile(f, headers, inode, startPos);
+          tf = openFile(f, headers, inode, startPos, null);
         } else {
           boolean updated = tf.getLastUpdated() < f.lastModified();
           if (updated) {
             if (tf.getRaf() == null) {
-              tf = openFile(f, headers, inode, tf.getPos());
+              tf = openFile(f, headers, inode, tf.getPos(), tf.getBufferEvent());
             }
             if (f.length() < tf.getPos()) {
               logger.info("Pos " + tf.getPos() + " is larger than file size! "
-                  + "Restarting from pos 0, file: " + tf.getPath() + ", inode: " + inode);
+                  + "Restarting from pos 0, file: " + tf.getPath() + ", inode: " + inode +
+                      ", f.length():" + f.length());
               tf.updatePos(tf.getPath(), inode, 0);
             }
           }
@@ -274,14 +313,20 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
 
 
   private long getInode(File file) throws IOException {
-    long inode = (long) Files.getAttribute(file.toPath(), "unix:ino");
-    return inode;
+    try {
+      long inode = (long) Files.getAttribute(file.toPath(), "unix:ino");
+      return inode;
+    } catch (IOException e) {
+      logger.error("Failed getting the inode of file: " + file, e);
+      return -1;
+    }
   }
 
-  private TailFile openFile(File file, Map<String, String> headers, long inode, long pos) {
+  private TailFile openFile(File file, Map<String, String> headers, long inode, long pos,
+                            Event bufferEvent) {
     try {
       logger.info("Opening file: " + file + ", inode: " + inode + ", pos: " + pos);
-      return new TailFile(file, headers, inode, pos);
+      return new TailFile(file, headers, inode, pos, bufferEvent);
     } catch (IOException e) {
       throw new FlumeException("Failed opening file: " + file, e);
     }
@@ -291,7 +336,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
    * Special builder class for ReliableTaildirEventReader
    */
   public static class Builder {
-    private Map<String, String> filePaths;
+    private Table<String, String, String> filePaths;
     private Table<String, String, String> headerTable;
     private String positionFilePath;
     private boolean skipToEnd;
@@ -301,8 +346,15 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
             TaildirSourceConfigurationConstants.DEFAULT_FILE_HEADER;
     private String fileNameHeader =
             TaildirSourceConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY;
+    private boolean multiline;
+    private String multilinePattern;
+    private String multilinePatternBelong;
+    private boolean multilinePatternMatched;
+    private long eventTimeoutSecs;
+    private int multilineMaxBytes;
+    private int multilineMaxLines;
 
-    public Builder filePaths(Map<String, String> filePaths) {
+    public Builder filePaths(Table<String, String, String> filePaths) {
       this.filePaths = filePaths;
       return this;
     }
@@ -342,10 +394,48 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
+    public Builder multiline(boolean multiline) {
+      this.multiline = multiline;
+      return this;
+    }
+
+    public Builder multilinePattern(String multilinePattern) {
+      this.multilinePattern = multilinePattern;
+      return this;
+    }
+
+    public Builder multilinePatternBelong(String multilinePatternBelong) {
+      this.multilinePatternBelong = multilinePatternBelong;
+      return this;
+    }
+
+    public Builder multilinePatternMatched(boolean multilinePatternMatched) {
+      this.multilinePatternMatched = multilinePatternMatched;
+      return this;
+    }
+
+    public Builder eventTimeoutSecs(long eventTimeoutSecs) {
+      this.eventTimeoutSecs = eventTimeoutSecs;
+      return this;
+    }
+
+    public Builder multilineMaxBytes(int multilineMaxBytes) {
+      this.multilineMaxBytes = multilineMaxBytes;
+      return this;
+    }
+
+    public Builder multilineMaxLines(int multilineMaxLines) {
+      this.multilineMaxLines = multilineMaxLines;
+      return this;
+    }
+
     public ReliableTaildirEventReader build() throws IOException {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
                                             addByteOffset, cachePatternMatching,
-                                            annotateFileName, fileNameHeader);
+                                            annotateFileName, fileNameHeader,
+                                            multiline, multilinePattern,
+                                            multilinePatternBelong, multilinePatternMatched,
+                                            eventTimeoutSecs, multilineMaxBytes, multilineMaxLines);
     }
   }
 
