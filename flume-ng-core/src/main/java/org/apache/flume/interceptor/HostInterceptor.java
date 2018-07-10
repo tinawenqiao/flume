@@ -109,7 +109,7 @@ public class HostInterceptor implements Interceptor {
     Map<String, String> headers = event.getHeaders();
 
     if (preserveExisting 
-	    && (headers.containsKey(ipHeader) || headers.containsKey(hostnameHeader))) {
+        && (headers.containsKey(ipHeader) || headers.containsKey(hostnameHeader))) {
       return event;
     }
     if (ip != null) {
