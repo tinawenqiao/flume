@@ -262,7 +262,7 @@ public class TaildirSource extends AbstractSource implements
         Long olderInode = entry.getKey();
         TailFile tf = entry.getValue();
         logger.debug("oldInode:" + olderInode + ", path=" + tf.getPath() + ", tf.getRaf()="
-                + (tf.getRaf()==null));
+                + (tf.getRaf() == null));
         if (!existingInodes.contains(olderInode) && tf.getRaf() != null) {
           logger.debug("Last acccess to Inode:" + entry.getKey() + ", path = " + tf.getPath() +
                   " needs closed.");
