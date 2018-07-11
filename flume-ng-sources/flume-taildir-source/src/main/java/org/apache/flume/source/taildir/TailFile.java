@@ -240,10 +240,10 @@ public class TailFile {
       if (needFlushTimeoutEvent()) {
         long eventTime = Long.parseLong(
                 bufferEvent.getHeaders().get(TimestampInterceptor.Constants.TIMESTAMP));
-        logger.debug("TailFile.readEvents: flush buffer event because timeout. BufferEvent's " +
-                "message: " + new String(bufferEvent.getBody()) + ". And BufferEvent's time : " +
-                new Timestamp(eventTime)+ ",Current time : "+
-                new Timestamp(System.currentTimeMillis()));
+        logger.debug("TailFile.readEvents: flush buffer event because timeout. BufferEvent's " 
+            + "message: " + new String(bufferEvent.getBody()) + ". And BufferEvent's time : " 
+            + new Timestamp(eventTime) + ",Current time : " 
+            + new Timestamp(System.currentTimeMillis()));
         flushBufferEvent(events);
       }
     } else {
