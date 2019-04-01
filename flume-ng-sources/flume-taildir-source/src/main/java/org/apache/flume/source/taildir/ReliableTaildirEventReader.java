@@ -69,6 +69,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
   private boolean multilinePatternMatched;
   private long multilineEventTimeoutSecs;
   private int multilineMaxBytes;
+  private boolean mulitlineMaxBytesTruncate;
   private int multilineMaxLines;
 
   /**
@@ -80,7 +81,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       boolean annotateFileName, String fileNameHeader,
       boolean multiline, String multilinePattern,
       String multilinePatternBelong, boolean multilinePatternMatched, long eventTimeoutSecs,
-      int multilineMaxBytes, int multilineMaxLines)
+      int multilineMaxBytes, boolean multilineMaxBytesTruncate, int multilineMaxLines)
           throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
@@ -114,6 +115,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     this.multilinePatternMatched = multilinePatternMatched;
     this.multilineEventTimeoutSecs = eventTimeoutSecs;
     this.multilineMaxBytes = multilineMaxBytes;
+    this.mulitlineMaxBytesTruncate = multilineMaxBytesTruncate;
     this.multilineMaxLines = multilineMaxLines;
     updateTailFiles(skipToEnd);
 
@@ -229,6 +231,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       currentFile.setMultilinePatternMatched(multilinePatternMatched);
       currentFile.setMultilineEventTimeoutSecs(multilineEventTimeoutSecs);
       currentFile.setMultilineMaxBytes(multilineMaxBytes);
+      currentFile.setMultilineMaxBytesTruncate(mulitlineMaxBytesTruncate);
       currentFile.setMultilineMaxLines(multilineMaxLines);
     }
     List<Event> events = currentFile.readEvents(numEvents, backoffWithoutNL, addByteOffset);
@@ -355,6 +358,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     private boolean multilinePatternMatched;
     private long eventTimeoutSecs;
     private int multilineMaxBytes;
+    private boolean multilineMaxBytesTruncate;
     private int multilineMaxLines;
 
     public Builder filePaths(Table<String, String, String> filePaths) {
@@ -427,6 +431,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
+    public Builder multilineMaxBytesTruncate(boolean multilineMaxBytesTruncate) {
+      this.multilineMaxBytesTruncate = multilineMaxBytesTruncate;
+      return this;
+    }
+
     public Builder multilineMaxLines(int multilineMaxLines) {
       this.multilineMaxLines = multilineMaxLines;
       return this;
@@ -438,7 +447,8 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
                                             annotateFileName, fileNameHeader,
                                             multiline, multilinePattern,
                                             multilinePatternBelong, multilinePatternMatched,
-                                            eventTimeoutSecs, multilineMaxBytes, multilineMaxLines);
+                                            eventTimeoutSecs, multilineMaxBytes,
+                                            multilineMaxBytesTruncate, multilineMaxLines);
     }
   }
 

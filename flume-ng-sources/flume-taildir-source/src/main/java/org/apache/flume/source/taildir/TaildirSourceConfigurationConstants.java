@@ -100,6 +100,14 @@ public class TaildirSourceConfigurationConstants {
   public static final int DEFAULT_MULTILINE_MAX_BYTES = 10485760;
 
   /**
+   * If the bytes length of multiline event exceeds this value, the event will be truncated.
+   * Truncate tag is <TRUNC>.</>
+   * Default value is true.
+   */
+  public static final String MULTILINE_MAX_BYTES_TRUNCATE = "multilineMaxBytesTruncate";
+  public static final boolean DEFAULT_MULTILINE_MAX_BYTES_TRUNCATE = true;
+
+  /**
    * If the lines of multiline event exceeds this value, the event will be flushed.
    * Default value 500. It's used in combination multilineMaxBytes.
    */

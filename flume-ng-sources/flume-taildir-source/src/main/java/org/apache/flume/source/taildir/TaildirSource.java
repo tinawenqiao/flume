@@ -91,6 +91,7 @@ public class TaildirSource extends AbstractSource implements
   private boolean multilinePatternMatched;
   private long multilineEventTimeoutSecs;
   private int multilineMaxBytes;
+  private boolean multilineMaxBytesTruncate;
   private int multilineMaxLines;
 
   @Override
@@ -112,6 +113,7 @@ public class TaildirSource extends AbstractSource implements
           .multilinePatternMatched(multilinePatternMatched)
           .eventTimeoutSecs(multilineEventTimeoutSecs)
           .multilineMaxBytes(multilineMaxBytes)
+          .multilineMaxBytesTruncate(multilineMaxBytesTruncate)
           .multilineMaxLines(multilineMaxLines)
           .build();
     } catch (IOException e) {
@@ -207,6 +209,7 @@ public class TaildirSource extends AbstractSource implements
     multilineEventTimeoutSecs = context.getInteger(MULTILINE_EVENT_TIMEOUT_SECONDS,
             DEFAULT_MULTILINE_EVENT_TIMEOUT_SECONDS);
     multilineMaxBytes = context.getInteger(MULTILINE_MAX_BYTES, DEFAULT_MULTILINE_MAX_BYTES);
+    multilineMaxBytesTruncate = context.getBoolean(MULTILINE_MAX_BYTES_TRUNCATE, DEFAULT_MULTILINE_MAX_BYTES_TRUNCATE);
     multilineMaxLines = context.getInteger(MULTILINE_MAX_LINES, DEFAULT_MULTILINE_MAX_LINES);
 
     if (sourceCounter == null) {

@@ -63,6 +63,7 @@ public class TailFile {
   private boolean multilinePatternMatched;
   private long multilineEventTimeoutSecs;
   private int multilineMaxBytes;
+  private boolean multilineMaxBytesTruncate;
   private int multilineMaxLines;
   private Event bufferEvent;
 
@@ -168,6 +169,10 @@ public class TailFile {
     this.multilineMaxBytes = multilineMaxBytes;
   }
 
+  public void setMultilineMaxBytesTruncate(boolean multilineMaxBytesTruncate) {
+    this.multilineMaxBytesTruncate = multilineMaxBytesTruncate;
+  }
+
   public void setMultilineMaxLines(int multilineMaxLines) {
     this.multilineMaxLines = multilineMaxLines;
   }
@@ -192,6 +197,23 @@ public class TailFile {
     oldBuffer = new byte[0];
   }
 
+
+  private Event truncate(Event event) {
+    if (event.getBody().length >= multilineMaxBytes) {
+      String truncateTag = "<TRUNC>";
+      byte[] truncateTagBytes = truncateTag.getBytes();
+      int len = multilineMaxBytes - truncateTagBytes.length;
+      byte[] bytes = event.getBody();
+      byte[] truncatedBytes = new byte[multilineMaxBytes];
+
+      System.arraycopy(bytes, 0, truncatedBytes, 0, len);
+      System.arraycopy(truncateTag.getBytes(), 0, truncatedBytes, len,
+              truncateTagBytes.length);
+      event.setBody(truncatedBytes);
+      logger.info("Truncate event body.Origin event body:" + new String(event.getBody()));
+    }
+    return event;
+  }
 
   public List<Event> readEvents(int numEvents, boolean backoffWithoutNL,
       boolean addByteOffset) throws IOException {
@@ -221,6 +243,9 @@ public class TailFile {
               break;
           }
           if (event != null) {
+            if (multilineMaxBytesTruncate) {
+              event = truncate(event);
+            }
             events.add(event);
             if (addByteOffset) {
               event.getHeaders().put(BYTE_OFFSET_HEADER_KEY, String.valueOf(getLineReadPos()));
@@ -339,6 +364,9 @@ public class TailFile {
 
   private void flushBufferEvent(List<Event> events) {
     Event event = EventBuilder.withBody(bufferEvent.getBody());
+    if (multilineMaxBytesTruncate) {
+      event = truncate(event);
+    }
     events.add(event);
     bufferEvent = null;
   }
