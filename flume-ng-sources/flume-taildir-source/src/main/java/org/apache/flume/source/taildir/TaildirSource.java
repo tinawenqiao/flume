@@ -52,7 +52,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
@@ -62,7 +61,7 @@ public class TaildirSource extends AbstractSource implements
 
   private static final Logger logger = LoggerFactory.getLogger(TaildirSource.class);
 
-  private Map<String, String> filePaths;
+  private Table<String, String, String> filePaths;
   private Table<String, String, String> headerTable;
   private int batchSize;
   private String positionFilePath;
@@ -88,6 +87,13 @@ public class TaildirSource extends AbstractSource implements
   private boolean fileHeader;
   private String fileHeaderKey;
   private Long maxBatchCount;
+  private boolean multiline;
+  private String multilinePattern;
+  private String multilinePatternBelong;
+  private boolean multilinePatternMatched;
+  private long multilineEventTimeoutSecs;
+  private int multilineMaxBytes;
+  private int multilineMaxLines;
 
   @Override
   public synchronized void start() {
@@ -102,6 +108,13 @@ public class TaildirSource extends AbstractSource implements
           .cachePatternMatching(cachePatternMatching)
           .annotateFileName(fileHeader)
           .fileNameHeader(fileHeaderKey)
+          .multiline(multiline)
+          .multilinePattern(multilinePattern)
+          .multilinePatternBelong(multilinePatternBelong)
+          .multilinePatternMatched(multilinePatternMatched)
+          .eventTimeoutSecs(multilineEventTimeoutSecs)
+          .multilineMaxBytes(multilineMaxBytes)
+          .multilineMaxLines(multilineMaxLines)
           .build();
     } catch (IOException e) {
       throw new FlumeException("Error instantiating ReliableTaildirEventReader", e);
@@ -158,9 +171,6 @@ public class TaildirSource extends AbstractSource implements
 
     filePaths = selectByKeys(context.getSubProperties(FILE_GROUPS_PREFIX),
                              fileGroups.split("\\s+"));
-    Preconditions.checkState(!filePaths.isEmpty(),
-        "Mapping for tailing files is empty or invalid: '" + FILE_GROUPS_PREFIX + "'");
-
     String homePath = System.getProperty("user.home").replace('\\', '/');
     positionFilePath = context.getString(POSITION_FILE, homePath + DEFAULT_POSITION_FILE);
     Path positionFile = Paths.get(positionFilePath);
@@ -192,6 +202,20 @@ public class TaildirSource extends AbstractSource implements
       logger.warn("Invalid maxBatchCount specified, initializing source "
           + "default maxBatchCount of {}", maxBatchCount);
     }
+    multiline = context.getBoolean(MULTILINE, DEFAULT_MULTILINE);
+    multilinePattern = context.getString(MULTILINE_PATTERN, DEFAULT_MULTILINE_PATTERN);
+    multilinePatternBelong = context.getString(MULTILINE_PATTERN_BELONG,
+        DEFAULT_MULTILINE_PATTERN_BELONG);
+    Preconditions.checkState(multilinePatternBelong.equals("previous") ||
+                        multilinePatternBelong.equals("next"),
+         "Config MultilinePatternBelong = " + multilinePatternBelong + " is invalid. Only" +
+                    " support 'previous' or 'next'");
+    multilinePatternMatched = context.getBoolean(MULTILINE_PATTERN_MATCHED,
+        DEFAULT_MULTILINE_PATTERN_MATCHED);
+    multilineEventTimeoutSecs = context.getInteger(MULTILINE_EVENT_TIMEOUT_SECONDS,
+        DEFAULT_MULTILINE_EVENT_TIMEOUT_SECONDS);
+    multilineMaxBytes = context.getInteger(MULTILINE_MAX_BYTES, DEFAULT_MULTILINE_MAX_BYTES);
+    multilineMaxLines = context.getInteger(MULTILINE_MAX_LINES, DEFAULT_MULTILINE_MAX_LINES);
 
     if (sourceCounter == null) {
       sourceCounter = new SourceCounter(getName());
@@ -203,11 +227,29 @@ public class TaildirSource extends AbstractSource implements
     return batchSize;
   }
 
-  private Map<String, String> selectByKeys(Map<String, String> map, String[] keys) {
-    Map<String, String> result = Maps.newHashMap();
+  private Table<String, String, String> selectByKeys(Map<String, String> map, String[] keys) {
+    Table<String, String, String> result = HashBasedTable.create();
     for (String key : keys) {
-      if (map.containsKey(key)) {
-        result.put(key, map.get(key));
+      if (map.containsKey(key + FILE_GROUPS_SUFFIX_DIR) &&
+              map.containsKey(key + FILE_GROUPS_SUFFIX_FILE)) {
+        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1), map.get(key + FILE_GROUPS_SUFFIX_DIR));
+        result.put(key, FILE_GROUPS_SUFFIX_FILE.substring(1),
+                map.get(key + FILE_GROUPS_SUFFIX_FILE));
+      } else if (map.containsKey(key)) {
+        // Translate the old configuration.
+        File fg = new File(map.get(key));
+        result.put(key, FILE_GROUPS_SUFFIX_DIR.substring(1), fg.getParent());
+        result.put(key, FILE_GROUPS_SUFFIX_FILE.substring(1), fg.getName());
+        logger.warn("{} is deprecated. Please use the parameter {}", FILE_GROUPS_PREFIX + key,
+                FILE_GROUPS_PREFIX + key + FILE_GROUPS_SUFFIX_DIR + " and " +
+                FILE_GROUPS_PREFIX + key + FILE_GROUPS_SUFFIX_FILE);
+      } else {
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_DIR),
+                "Mapping for tailing files is empty or invalid: '"
+                        + FILE_GROUPS_PREFIX + (key + FILE_GROUPS_SUFFIX_DIR) + "'");
+        Preconditions.checkState(map.containsKey(key + FILE_GROUPS_SUFFIX_FILE),
+                "Mapping for tailing files is empty or invalid: '"
+                        + FILE_GROUPS_PREFIX + (key + FILE_GROUPS_SUFFIX_FILE + "'"));
       }
     }
     return result;
@@ -231,11 +273,27 @@ public class TaildirSource extends AbstractSource implements
   public Status process() {
     Status status = Status.BACKOFF;
     try {
+      Map<Long, TailFile> olderTailFiles = reader.getTailFiles();
       existingInodes.clear();
       existingInodes.addAll(reader.updateTailFiles());
+      for (Map.Entry<Long, TailFile> entry : olderTailFiles.entrySet()) {
+        Long olderInode = entry.getKey();
+        TailFile tf = entry.getValue();
+        logger.debug("oldInode:" + olderInode + ", path=" + tf.getPath() + ", tf.getRaf()=" +
+            (tf.getRaf() == null));
+        if (!existingInodes.contains(olderInode) && tf.getRaf() != null) {
+          logger.debug("Last access to Inode:" + entry.getKey() + ", path = " + tf.getPath() +
+              " needs closed.");
+          tf.close();
+        }
+      }
       for (long inode : existingInodes) {
         TailFile tf = reader.getTailFiles().get(inode);
-        if (tf.needTail()) {
+        if (tf.needTail() || tf.needFlushTimeoutEvent()) {
+          if (tf.getBufferEvent() != null) {
+            logger.debug("TaildirSource.process() bufferEvent is not null. Buffer message:" +
+            new String(tf.getBufferEvent().getBody()));
+          }
           boolean hasMoreLines = tailFileProcess(tf, true);
           if (hasMoreLines) {
             status = Status.READY;
@@ -268,6 +326,11 @@ public class TaildirSource extends AbstractSource implements
       reader.setCurrentFile(tf);
       List<Event> events = reader.readEvents(batchSize, backoffWithoutNL);
       if (events.isEmpty()) {
+        if (tf.getBufferEvent() != null) {
+          long pos = tf.getLineReadPos();
+          tf.setPos(pos);
+          tf.setLastUpdated(reader.getUpdateTime());
+        }
         return false;
       }
       sourceCounter.addToEventReceivedCount(events.size());
@@ -302,9 +365,14 @@ public class TaildirSource extends AbstractSource implements
     for (long inode : idleInodes) {
       TailFile tf = reader.getTailFiles().get(inode);
       if (tf.getRaf() != null) { // when file has not closed yet
+        logger.info("Before close file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+                ", buffer message:" + new String(tf.getBufferEvent().getBody()));
         tailFileProcess(tf, false);
         tf.close();
-        logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " + tf.getPos());
+        logger.info("Closed file: " + tf.getPath() + ", inode: " + inode + ", pos: " +
+                tf.getPos() + ", lineReadPos:" + tf.getLineReadPos() +
+          ", buffer message:" + new String(tf.getBufferEvent().getBody()));
       }
     }
     idleInodes.clear();
@@ -320,6 +388,8 @@ public class TaildirSource extends AbstractSource implements
         long now = System.currentTimeMillis();
         for (TailFile tf : reader.getTailFiles().values()) {
           if (tf.getLastUpdated() + idleTimeout < now && tf.getRaf() != null) {
+            logger.debug("TaildirSource.idleFileCheckerRunnable()-Add File: {" + tf.getPath() +
+                    "} to idleInodes.");
             idleInodes.add(tf.getInode());
           }
         }

@@ -52,12 +52,22 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_PREFIX;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_DIR;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.HEADERS_PREFIX;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.POSITION_FILE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILENAME_HEADER_KEY;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.BATCH_SIZE;
 import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MAX_BATCH_COUNT;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_BELONG;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_PATTERN_MATCHED;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_BYTES;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_MAX_LINES;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.MULTILINE_EVENT_TIMEOUT_SECONDS;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -114,9 +124,13 @@ public class TestTaildirSource {
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "ab c");
     // Tail a.log and b.log
-    context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/[ab].log");
+    //context.put(FILE_GROUPS_PREFIX + "ab", tmpDir.getAbsolutePath() + "/[ab].log");
+    context.put(FILE_GROUPS_PREFIX + "ab" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "ab" + FILE_GROUPS_SUFFIX_FILE,  "[ab].log");
     // Tail files that starts with c.log
-    context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/c.log.*");
+    //context.put(FILE_GROUPS_PREFIX + "c", tmpDir.getAbsolutePath() + "/c.log.*");
+    context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_FILE, "c.log.*");
 
     Configurables.configure(source, context);
     source.start();
@@ -154,9 +168,12 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1 f2 f3");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1$");
-    context.put(FILE_GROUPS_PREFIX + "f2", tmpDir.getAbsolutePath() + "/file2$");
-    context.put(FILE_GROUPS_PREFIX + "f3", tmpDir.getAbsolutePath() + "/file3$");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file1$");
+    context.put(FILE_GROUPS_PREFIX + "f2" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f2" + FILE_GROUPS_SUFFIX_FILE, "file2$");
+    context.put(FILE_GROUPS_PREFIX + "f3" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f3" + FILE_GROUPS_SUFFIX_FILE, "file3$");
     context.put(HEADERS_PREFIX + "f1.headerKeyTest", "value1");
     context.put(HEADERS_PREFIX + "f2.headerKeyTest", "value2");
     context.put(HEADERS_PREFIX + "f2.headerKeyTest2", "value2-2");
@@ -195,7 +212,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "f1");
-    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1$");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file1$");
     Configurables.configure(source, context);
 
     for (int i = 0; i < 3; i++) {
@@ -271,7 +289,8 @@ public class TestTaildirSource {
     Context context = new Context();
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "g1");
-    context.put(FILE_GROUPS_PREFIX + "g1", tmpDir.getAbsolutePath() + "/.*");
+    context.put(FILE_GROUPS_PREFIX + "g1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "g1" + FILE_GROUPS_SUFFIX_FILE, ".*");
 
     Configurables.configure(source, context);
 
@@ -319,6 +338,8 @@ public class TestTaildirSource {
     context.put(POSITION_FILE, posFilePath);
     context.put(FILE_GROUPS, "fg");
     context.put(FILE_GROUPS_PREFIX + "fg", tmpDir.getAbsolutePath() + "/file.*");
+    context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_FILE, "file.*");
     context.put(FILENAME_HEADER, "true");
     context.put(FILENAME_HEADER_KEY, "path");
 
@@ -470,6 +491,260 @@ public class TestTaildirSource {
 
     status = source.process();
     assertEquals(Status.BACKOFF, status);
+  }
+
+  @Test
+  public void testMultilineBelongPreMatchedFalse() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
+        "2017-01-02 00:00:02,222 line3\nline4\nline5\n" +
+        "2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "previous");
+    context.put(MULTILINE_PATTERN_MATCHED, "false");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 9; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(2, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\nline2\n"));
+    assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\nline5\n"));
+  }
+
+  @Test
+  public void testMultilineBelongPreMatchedTrue() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
+        "2017-01-02 00:00:02,222 line3\nline4\nline5\n" +
+        "2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "previous");
+    context.put(MULTILINE_PATTERN_MATCHED, "true");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 9; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(6, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\n"));
+    assertTrue(out.get(1).equals("line2\n2017-01-02 00:00:02,222 line3\n"));
+    assertTrue(out.get(2).equals("line4\n"));
+    assertTrue(out.get(3).equals("line5\n2017-01-03 00:00:03,333 line6\n"));
+    assertTrue(out.get(4).equals("line7\n"));
+    assertTrue(out.get(5).equals("line8\n"));
+  }
+
+  @Test
+  public void testMultilineBelongNextMatchedFalse() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
+        "2017-01-02 00:00:02,222 line3\nline4\nline5\n" +
+        "2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "next");
+    context.put(MULTILINE_PATTERN_MATCHED, "false");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 9; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(3, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\n"));
+    assertTrue(out.get(1).equals("line2\n2017-01-02 00:00:02,222 line3\n"));
+    assertTrue(out.get(2).equals("line4\nline5\n2017-01-03 00:00:03,333 line6\n"));
+  }
+
+  @Test
+  public void testMultilineBelongNextMatchedTrue() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
+        "2017-01-02 00:00:02,222 line3\nline4\nline5\n" +
+        "2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "next");
+    context.put(MULTILINE_PATTERN_MATCHED, "true");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 9; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(6, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\nline2\n"));
+    assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\n"));
+    assertTrue(out.get(2).equals("line5\n"));
+    assertTrue(out.get(3).equals("2017-01-03 00:00:03,333 line6\nline7\n"));
+    assertTrue(out.get(4).equals("line8\n"));
+    assertTrue(out.get(5).equals("line9\n"));
+  }
+
+  @Test
+  public void testMultilineMaxBytesAndMaxLines() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    String longStr = "";
+    for (int i = 0; i < 8192; i++) {
+      longStr = longStr + "aa";
+    }
+    Files.write("2017-01-01 00:00:01,111 line11\nline12\nline13\nline14\nline15\n" +
+            "2017-01-02 00:00:02,222 line21\nline22" + longStr + "\nline23\nline24\nline25\n" +
+            "2017-01-03 00:00:03,333 line31\nline32\nline33\nline34\nline35\n",
+        f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1", tmpDir.getAbsolutePath() + "/file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "previous");
+    context.put(MULTILINE_PATTERN_MATCHED, "false");
+    context.put(MULTILINE_MAX_BYTES, "16384");
+    context.put(MULTILINE_MAX_LINES, "4");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 15; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(5, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line11\nline12\nline13\nline14\n"));
+    assertTrue(out.get(1).equals("line15\n"));
+    assertTrue(out.get(2).equals("2017-01-02 00:00:02,222 line21\nline22" + longStr + "\n"));
+    assertTrue(out.get(3).equals("line23\nline24\nline25\n"));
+    assertTrue(out.get(4).equals("2017-01-03 00:00:03,333 line31\nline32\nline33\nline34\n"));
+  }
+
+  @Test
+  public void testMultilineEventTimeout() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("2017-01-01 00:00:01,111 line1\nline2\n" +
+        "2017-01-02 00:00:02,222 line3\nline4\nline5\n" +
+        "2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "fg");
+    context.put(FILE_GROUPS_PREFIX + "fg", tmpDir.getAbsolutePath() + "/file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "previous");
+    context.put(MULTILINE_PATTERN_MATCHED, "false");
+    context.put(MULTILINE_EVENT_TIMEOUT_SECONDS, "60");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 9; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    try {
+      Thread.sleep(60000);
+    } catch (InterruptedException e) {
+    }
+
+    source.process();
+    txn = channel.getTransaction();
+    txn.begin();
+    for (int j = 0; j < 2; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(3, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\nline2\n"));
+    assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\nline5\n"));
+    assertTrue(out.get(2).equals("2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n"));
   }
 
 }

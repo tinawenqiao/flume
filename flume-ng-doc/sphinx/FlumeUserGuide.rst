@@ -1364,7 +1364,8 @@ Property Name                       Default                        Description
 **channels**                        --
 **type**                            --                             The component type name, needs to be ``TAILDIR``.
 **filegroups**                      --                             Space-separated list of file groups. Each file group indicates a set of files to be tailed.
-**filegroups.<filegroupName>**      --                             Absolute path of the file group. Regular expression (and not file system patterns) can be used for filename only.
+**filegroups.<filegroupName>.parentDir**   --                             Absolute parent directory path of the file group. Neither wildcards nor regular expressions (and not file system patterns) are allowed in directory. It must be used in combination with filePattern.
+**filegroups.<filegroupName>.filePattern** --                             Relative file path of the file group's parent directory. Directory can be included. Regular expression (and not file system patterns) can be used in directory and filename. It must be used in combination with parentDir.
 positionFile                        ~/.flume/taildir_position.json File in JSON format to record the inode, the absolute path and the last position of each tailing file.
 headers.<filegroupName>.<headerKey> --                             Header value which is the set with header key. Multiple headers can be specified for one file group.
 byteOffsetHeader                    false                          Whether to add the byte offset of a tailed line to a header called 'byteoffset'.
@@ -1373,6 +1374,7 @@ idleTimeout                         120000                         Time (ms) to 
 writePosInterval                    3000                           Interval time (ms) to write the last position of each file on the position file.
 batchSize                           100                            Max number of lines to read and send to the channel at a time. Using the default is usually fine.
 maxBatchCount                       Long.MAX_VALUE                 Controls the number of batches being read consecutively from the same file.
+
                                                                    If the source is tailing multiple files and one of them is written at a fast rate,
                                                                    it can prevent other files to be processed, because the busy file would be read in an endless loop.
                                                                    In this case lower this value.
@@ -1384,6 +1386,13 @@ cachePatternMatching                true                           Listing direc
                                                                    Requires that the file system keeps track of modification times with at least a 1-second granularity.
 fileHeader                          false                          Whether to add a header storing the absolute path filename.
 fileHeaderKey                       file                           Header key to use when appending absolute path filename to event header.
+multiline                           false                          Whether to support joining of multiline messages into a single flume event.
+multilinePattern                    \n                             Regexp which matches the start or the end of an event consisting of multilines.
+multilinePatternBelong              next                           Value can be {'previous','next'}. Value 'previous' indicates that the matched line is part of the previous message and value 'next' indicates the matched line is part of the next message.
+multilineMatched                    true                           Whether to match the pattern. If 'false', a message not matching the pattern will be combined with the previous or the next line.
+multilineEventTimeoutSeconds        0                              Maximum seconds before an event automatically be flushed. Default value 0 means never time out.
+multilineMaxBytes                   10485760                       If the length of multiline event bytes exceeds this value, the event will be flushed. Default value 10MB. It's used in combination multilineMaxLines.
+multilineMaxLines                   500                            If the lines of multiline event exceeds this value, the event will be flushed. Default value 500. It's used in combination multilineMaxBytes.
 =================================== ============================== ===================================================
 
 Example for agent named a1:
@@ -1396,13 +1405,22 @@ Example for agent named a1:
   a1.sources.r1.channels = c1
   a1.sources.r1.positionFile = /var/log/flume/taildir_position.json
   a1.sources.r1.filegroups = f1 f2
-  a1.sources.r1.filegroups.f1 = /var/log/test1/example.log
+  a1.sources.r1.filegroups.f1.parentDir = /var/log/test1
+  a1.sources.r1.filegroups.f1.filePattern = example.log
   a1.sources.r1.headers.f1.headerKey1 = value1
-  a1.sources.r1.filegroups.f2 = /var/log/test2/.*log.*
+  a1.sources.r1.filegroups.f2.parentDir = /var/log/
+  a1.sources.r1.filegroups.f2.filePattern = test[0-9]/.*log.*
   a1.sources.r1.headers.f2.headerKey1 = value2
   a1.sources.r1.headers.f2.headerKey2 = value2-2
   a1.sources.r1.fileHeader = true
   a1.sources.ri.maxBatchCount = 1000
+  a1.sources.r1.multiline = true
+  a1.sources.r1.multilinePattern = \d\d\d\d-\d\d-\d\d\s\d\d:\d\d:\d\d,\d\d\d
+  a1.sources.r1.multilinePatternBelong = previous
+  a1.sources.r1.multilineMatched = false
+  a1.sources.r1.multilineEventTimeoutSeconds = 300
+  a1.sources.r1.multilineMaxBytes = 10485760
+  a1.sources.r1.multilineMaxLines = 500
 
 Twitter 1% firehose Source (experimental)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -4343,7 +4361,7 @@ are named components, here is an example of how they are created through configu
   a1.sources.r1.interceptors = i1 i2
   a1.sources.r1.interceptors.i1.type = org.apache.flume.interceptor.HostInterceptor$Builder
   a1.sources.r1.interceptors.i1.preserveExisting = false
-  a1.sources.r1.interceptors.i1.hostHeader = hostname
+  a1.sources.r1.interceptors.i1.hostname= hostname
   a1.sources.r1.interceptors.i2.type = org.apache.flume.interceptor.TimestampInterceptor$Builder
   a1.sinks.k1.filePrefix = FlumeData.%{CollectorHost}.%Y-%m-%d
   a1.sinks.k1.channel = c1
@@ -4384,16 +4402,18 @@ Example for agent named a1:
 Host Interceptor
 ~~~~~~~~~~~~~~~~
 
-This interceptor inserts the hostname or IP address of the host that this agent is running on. It inserts a header
-with key ``host`` or a configured key whose value is the hostname or IP address of the host, based on configuration.
+This interceptor inserts the hostname or IP address of the host or both that this agent is running on. It inserts a header
+with a configured key whose value is the hostname or IP address of the host, based on configuration.
 
 ================  =======  ========================================================================
 Property Name     Default  Description
 ================  =======  ========================================================================
 **type**          --       The component type name, has to be ``host``
-preserveExisting  false    If the host header already exists, should it be preserved - true or false
-useIP             true     Use the IP Address if true, else use hostname.
-hostHeader        host     The header key to be used.
+preserveExisting  false    If the IP or hostname header already exists, should it be preserved - true or false
+useIP             true     Use the IP Address if true.
+useHostname       true     Use the hostname if true.
+ip                ip       The header key of ip to be used.
+hostname          hostname The header key of hostname to be used.
 ================  =======  ========================================================================
 
 Example for agent named a1:
@@ -4404,6 +4424,11 @@ Example for agent named a1:
   a1.channels = c1
   a1.sources.r1.interceptors = i1
   a1.sources.r1.interceptors.i1.type = host
+  a1.sources.r1.interceptors.i1.useIP = true
+  a1.sources.r1.interceptors.i1.useHostname = true
+  a1.sources.r1.interceptors.i1.ip = ipKey
+  a1.sources.r1.interceptors.i1.hostname = hostnameKey
+
 
 Static Interceptor
 ~~~~~~~~~~~~~~~~~~

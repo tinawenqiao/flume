@@ -31,7 +31,7 @@ import org.junit.Test;
 public class TestHostInterceptor {
 
   /**
-   * Ensure that the "host" header gets set (to something)
+   * Ensure that the "ip" and "hostname" header gets set (to something)
    */
   @Test
   public void testBasic() throws Exception {
@@ -41,12 +41,15 @@ public class TestHostInterceptor {
 
     Event eventBeforeIntercept = EventBuilder.withBody("test event",
             Charsets.UTF_8);
-    Assert.assertNull(eventBeforeIntercept.getHeaders().get(Constants.HOST));
+    Assert.assertNull(eventBeforeIntercept.getHeaders().get(Constants.HOSTIP_HEADER));
+    Assert.assertNull(eventBeforeIntercept.getHeaders().get(Constants.HOSTNAME_HEADER));
 
     Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
-    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOST);
+    String actualHostIP = eventAfterIntercept.getHeaders().get(Constants.HOSTIP_HEADER);
+    String actualHostname = eventAfterIntercept.getHeaders().get(Constants.HOSTNAME_HEADER);
 
-    Assert.assertNotNull(actualHost);
+    Assert.assertNotNull(actualHostIP);
+    Assert.assertNotNull(actualHostname);
   }
 
   @Test
@@ -55,16 +58,16 @@ public class TestHostInterceptor {
             InterceptorType.HOST.toString());
     Context ctx = new Context();
     ctx.put("preserveExisting", "false");
-    ctx.put("hostHeader", "hostname");
+    ctx.put("hostname", "hostnameKey");
     builder.configure(ctx);
     Interceptor interceptor = builder.build();
 
     Event eventBeforeIntercept = EventBuilder.withBody("test event",
             Charsets.UTF_8);
-    Assert.assertNull(eventBeforeIntercept.getHeaders().get("hostname"));
+    Assert.assertNull(eventBeforeIntercept.getHeaders().get("hostnameKey"));
 
     Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
-    String actualHost = eventAfterIntercept.getHeaders().get("hostname");
+    String actualHost = eventAfterIntercept.getHeaders().get("hostnameKey");
 
     Assert.assertNotNull(actualHost);
     Assert.assertEquals(InetAddress.getLocalHost().getHostAddress(),
@@ -72,7 +75,7 @@ public class TestHostInterceptor {
   }
 
   /**
-   * Ensure host is NOT overwritten when preserveExisting=true.
+   * Ensure hostname is NOT overwritten when preserveExisting=true.
    */
   @Test
   public void testPreserve() throws Exception {
@@ -87,20 +90,20 @@ public class TestHostInterceptor {
     final String ORIGINAL_HOST = "originalhost";
     Event eventBeforeIntercept = EventBuilder.withBody("test event",
             Charsets.UTF_8);
-    eventBeforeIntercept.getHeaders().put(Constants.HOST, ORIGINAL_HOST);
+    eventBeforeIntercept.getHeaders().put(Constants.HOSTNAME_HEADER, ORIGINAL_HOST);
     Assert.assertEquals(ORIGINAL_HOST,
-            eventBeforeIntercept.getHeaders().get(Constants.HOST));
+            eventBeforeIntercept.getHeaders().get(Constants.HOSTNAME_HEADER));
 
     String expectedHost = ORIGINAL_HOST;
     Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
-    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOST);
+    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOSTNAME_HEADER);
 
     Assert.assertNotNull(actualHost);
     Assert.assertEquals(expectedHost, actualHost);
   }
 
   /**
-   * Ensure host IS overwritten when preserveExisting=false.
+   * Ensure hostname is overwritten when preserveExisting=false.
    */
   @Test
   public void testClobber() throws Exception {
@@ -115,25 +118,26 @@ public class TestHostInterceptor {
     final String ORIGINAL_HOST = "originalhost";
     Event eventBeforeIntercept = EventBuilder.withBody("test event",
             Charsets.UTF_8);
-    eventBeforeIntercept.getHeaders().put(Constants.HOST, ORIGINAL_HOST);
+    eventBeforeIntercept.getHeaders().put(Constants.HOSTNAME_HEADER, ORIGINAL_HOST);
     Assert.assertEquals(ORIGINAL_HOST, eventBeforeIntercept.getHeaders()
-            .get(Constants.HOST));
+            .get(Constants.HOSTNAME_HEADER));
 
     String expectedHost = InetAddress.getLocalHost().getHostAddress();
     Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
-    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOST);
+    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOSTNAME_HEADER);
 
     Assert.assertNotNull(actualHost);
     Assert.assertEquals(expectedHost, actualHost);
   }
 
   /**
-   * Ensure host IP is used by default instead of host name.
+   * Ensure host IP and hostname are used by default..
    */
   @Test
-  public void testUseIP() throws Exception {
+  public void testUseIPAndHostname() throws Exception {
     Context ctx = new Context();
-    ctx.put("useIP", "true"); // default behavior
+    ctx.put(Constants.USE_IP, "true"); // default behavior
+    ctx.put(Constants.USE_HOSTNAME, "true"); //default behavior
 
     Interceptor.Builder builder = InterceptorBuilderFactory
             .newInstance(InterceptorType.HOST.toString());
@@ -143,25 +147,30 @@ public class TestHostInterceptor {
     final String ORIGINAL_HOST = "originalhost";
     Event eventBeforeIntercept = EventBuilder.withBody("test event",
             Charsets.UTF_8);
-    eventBeforeIntercept.getHeaders().put(Constants.HOST, ORIGINAL_HOST);
+    eventBeforeIntercept.getHeaders().put(Constants.HOSTNAME_HEADER, ORIGINAL_HOST);
     Assert.assertEquals(ORIGINAL_HOST, eventBeforeIntercept.getHeaders()
-            .get(Constants.HOST));
+            .get(Constants.HOSTNAME_HEADER));
 
-    String expectedHost = InetAddress.getLocalHost().getHostAddress();
+    String expectedHostIP = InetAddress.getLocalHost().getHostAddress();
+    String expectedHostname = InetAddress.getLocalHost().getCanonicalHostName();
     Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
-    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOST);
+    String actualHostIP = eventAfterIntercept.getHeaders().get(Constants.HOSTIP_HEADER);
+    String actualHostname = eventAfterIntercept.getHeaders().get(Constants.HOSTNAME_HEADER);
 
-    Assert.assertNotNull(actualHost);
-    Assert.assertEquals(expectedHost, actualHost);
+    Assert.assertNotNull(actualHostIP);
+    Assert.assertNotNull(actualHostname);
+    Assert.assertEquals(expectedHostIP, actualHostIP);
+    Assert.assertEquals(expectedHostname, actualHostname);
   }
 
   /**
-   * Ensure host name can be used instead of host IP.
+   * Ensure only host IP is used.
    */
   @Test
-  public void testUseHostname() throws Exception {
+  public void testUseIPOnly() throws Exception {
     Context ctx = new Context();
-    ctx.put("useIP", "false");
+    ctx.put(Constants.USE_IP, "true"); // default behavior
+    ctx.put(Constants.USE_HOSTNAME, "false");
 
     Interceptor.Builder builder = InterceptorBuilderFactory
             .newInstance(InterceptorType.HOST.toString());
@@ -171,13 +180,42 @@ public class TestHostInterceptor {
     final String ORIGINAL_HOST = "originalhost";
     Event eventBeforeIntercept = EventBuilder.withBody("test event",
             Charsets.UTF_8);
-    eventBeforeIntercept.getHeaders().put(Constants.HOST, ORIGINAL_HOST);
+    eventBeforeIntercept.getHeaders().put(Constants.HOSTIP_HEADER, ORIGINAL_HOST);
     Assert.assertEquals(ORIGINAL_HOST, eventBeforeIntercept.getHeaders()
-            .get(Constants.HOST));
+            .get(Constants.HOSTIP_HEADER));
+
+    String expectedHostIP = InetAddress.getLocalHost().getHostAddress();
+    Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
+    String actualHostIP = eventAfterIntercept.getHeaders().get(Constants.HOSTIP_HEADER);
+
+    Assert.assertNotNull(actualHostIP);
+    Assert.assertEquals(expectedHostIP, actualHostIP);
+  }
+
+  /**
+   * Ensure only hostname is used.
+   */
+  @Test
+  public void testUseHostnameOnly() throws Exception {
+    Context ctx = new Context();
+    ctx.put(Constants.USE_IP, "false");
+    ctx.put(Constants.USE_HOSTNAME, "true");
+
+    Interceptor.Builder builder = InterceptorBuilderFactory
+            .newInstance(InterceptorType.HOST.toString());
+    builder.configure(ctx);
+    Interceptor interceptor = builder.build();
+
+    final String ORIGINAL_HOST = "originalhost";
+    Event eventBeforeIntercept = EventBuilder.withBody("test event",
+            Charsets.UTF_8);
+    eventBeforeIntercept.getHeaders().put(Constants.HOSTNAME_HEADER, ORIGINAL_HOST);
+    Assert.assertEquals(ORIGINAL_HOST, eventBeforeIntercept.getHeaders()
+            .get(Constants.HOSTNAME_HEADER));
 
     String expectedHost = InetAddress.getLocalHost().getCanonicalHostName();
     Event eventAfterIntercept = interceptor.intercept(eventBeforeIntercept);
-    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOST);
+    String actualHost = eventAfterIntercept.getHeaders().get(Constants.HOSTNAME_HEADER);
 
     Assert.assertNotNull(actualHost);
     Assert.assertEquals(expectedHost, actualHost);
