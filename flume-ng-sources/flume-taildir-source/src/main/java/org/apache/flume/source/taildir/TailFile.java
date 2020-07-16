@@ -218,8 +218,12 @@ public class TailFile {
   public List<Event> readEvents(int numEvents, boolean backoffWithoutNL,
       boolean addByteOffset) throws IOException {
     List<Event> events = Lists.newLinkedList();
+    logger.debug("this.mutliline:" + multiline);
     if (this.multiline) {
+      logger.debug("file.Inode:" + getInode() +
+          ", file.path:" + getPath() + ", raf=null:" + (raf == null));
       if (raf != null) { // when file has not closed yet
+        logger.debug("events.size=" + events.size() + ", numEvents=" + numEvents);
         boolean match = this.multilinePatternMatched;
         while (events.size() < numEvents) {
           LineResult line = readLine();
@@ -231,7 +235,8 @@ public class TailFile {
                   ". Current time : " + new Timestamp(System.currentTimeMillis()) +
                   ". Pos:" + pos +
                   ". LineReadPos:" + lineReadPos + ",raf.getPointer:" + raf.getFilePointer() +
-                  ", file.length()=" + raf.length());
+                  ", file.length()=" + raf.length() + ", file.Inode:" + getInode() +
+                  ", file.path:" + getPath());
           switch (this.multilinePatternBelong) {
             case "next":
               event = readMultilineEventNext(line, match);
@@ -404,7 +409,7 @@ public class TailFile {
   private void readFile() throws IOException {
     logger.debug("TailFile.readFile() Before read file: pos : " + pos + ", lineReadPos:" +
             lineReadPos + ",raf.length():" + raf.length() + ", raf.getFilePointer():" +
-            raf.getFilePointer());
+            raf.getFilePointer() + ", inode:" +getInode());
     if ((raf.length() - raf.getFilePointer()) < BUFFER_SIZE) {
       buffer = new byte[(int) (raf.length() - raf.getFilePointer())];
     } else {
@@ -428,7 +433,9 @@ public class TailFile {
   public LineResult readLine() throws IOException {
     LineResult lineResult = null;
     while (true) {
+      logger.debug("bufferPos:" + bufferPos);
       if (bufferPos == NEED_READING) {
+        logger.debug("raf.getFilePointer=" + raf.getFilePointer() + ", raf.length=" + raf.length());
         if (raf.getFilePointer() < raf.length()) {
           readFile();
         } else {

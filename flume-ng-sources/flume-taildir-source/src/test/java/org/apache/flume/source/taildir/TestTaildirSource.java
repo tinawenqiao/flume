@@ -628,4 +628,58 @@ public class TestTaildirSource {
     assertTrue(out.get(1).equals("2017-01-02 00:00:02,222 line3\nline4\nline5\n"));
     assertTrue(out.get(2).equals("2017-01-03 00:00:03,333 line6\nline7\nline8\nline9\n"));
   }
+
+  @Test
+  public void testFileNoMatchAfterMultilineEventTimeout() throws IOException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("2017-01-01 00:00:01,111 line1\n", f1, Charsets.UTF_8);
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "f1");
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f1" + FILE_GROUPS_SUFFIX_FILE, "file1");
+    context.put(MULTILINE, "true");
+    context.put(MULTILINE_PATTERN, "\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d,\\d\\d\\d");
+    context.put(MULTILINE_PATTERN_BELONG, "previous");
+    context.put(MULTILINE_PATTERN_MATCHED, "false");
+    context.put(MULTILINE_EVENT_TIMEOUT_SECONDS, "30");
+
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int j = 0; j < 1; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+
+    try {
+      Thread.sleep(60000);
+    } catch (InterruptedException e) {
+    }
+
+    f1.renameTo(new File(tmpDir, "file2"));
+    source.process();
+    txn = channel.getTransaction();
+    txn.begin();
+    for (int j = 0; j < 2; j++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(1, out.size());
+    assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\n"));
+  }
 }

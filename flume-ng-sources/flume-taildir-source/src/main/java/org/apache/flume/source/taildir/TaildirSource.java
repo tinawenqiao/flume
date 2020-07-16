@@ -25,7 +25,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -260,20 +262,39 @@ public class TaildirSource extends AbstractSource implements
     try {
       Map<Long, TailFile> olderTailFiles = reader.getTailFiles();
       existingInodes.clear();
-      existingInodes.addAll(reader.updateTailFiles());
-      for (Map.Entry<Long, TailFile> entry : olderTailFiles.entrySet()) {
+      ListIterator<Long> listIterator = reader.updateTailFiles().listIterator();
+      while(listIterator.hasNext()) {
+        long inode = listIterator.next();
+        existingInodes.add(inode);
+        logger.debug("Add inode:" + inode + " to existingInodes set.");
+      }
+      Iterator<Entry<Long, TailFile>> iterator = olderTailFiles.entrySet().iterator();
+      while(iterator.hasNext()) {
+        Entry<Long, TailFile> entry = iterator.next();
         Long olderInode = entry.getKey();
         TailFile tf = entry.getValue();
-        logger.debug("oldInode:" + olderInode + ", path=" + tf.getPath() + ", tf.getRaf()="
-                + (tf.getRaf() == null));
-        if (!existingInodes.contains(olderInode) && tf.getRaf() != null) {
-          logger.debug("Last acccess to Inode:" + entry.getKey() + ", path = " + tf.getPath() +
+        logger.debug("oldInode:" + olderInode + ", path=" + tf.getPath()  + ", inMatchedNodes:" +
+            existingInodes.contains(olderInode) + ", tf.getRaf() is null =" + (tf.getRaf() == null) +
+            ", tf.getPos()=" + tf.getPos() + ", tf.getLastUpdated()=" + tf.getLastUpdated());
+        if (!existingInodes.contains(olderInode) && tf.getBufferEvent() == null) {
+          logger.debug("Last access to Inode:" + entry.getKey() + ", path = " + tf.getPath() +
                   " needs closed.");
-          tf.close();
+          if (tf.getRaf() != null) {
+            tf.close();
+            logger.debug("Inode:" + olderInode + " is closed.");
+          }
+          iterator.remove();
+        }
+        if (!existingInodes.contains(olderInode) && tf.getRaf() == null) {
+          logger.debug("Inode:" + olderInode + " is not matched and already closed.");
+        }
+        if (!existingInodes.contains(olderInode) && tf.getBufferEvent() != null) {
+          existingInodes.add(olderInode);
         }
       }
       for (long inode : existingInodes) {
         TailFile tf = reader.getTailFiles().get(inode);
+        logger.debug("TaildirSource is processing file inode:" + inode + ", path:" + tf.getPath());
         if (tf.needTail() || tf.needFlushTimeoutEvent()) {
           if (tf.getBufferEvent() != null) {
             logger.debug("TaildirSource.process() bufferEvent is not null. Buffer message:" +
@@ -310,8 +331,11 @@ public class TaildirSource extends AbstractSource implements
     while (true) {
       reader.setCurrentFile(tf);
       List<Event> events = reader.readEvents(batchSize, backoffWithoutNL);
+      logger.debug("events.size:" + events.size());
       if (events.isEmpty()) {
+        logger.debug("events.isEmpty:true");
         if (tf.getBufferEvent() != null) {
+          logger.debug("events.bufferEvent is not null");
           long pos = tf.getLineReadPos();
           tf.setPos(pos);
           tf.setLastUpdated(reader.getUpdateTime());
@@ -335,6 +359,7 @@ public class TaildirSource extends AbstractSource implements
       sourceCounter.addToEventAcceptedCount(events.size());
       sourceCounter.incrementAppendBatchAcceptedCount();
       if (events.size() < batchSize) {
+        logger.debug("events.size:" + events.size() + " is less than batchSize:" + batchSize);
         break;
       }
     }
@@ -379,7 +404,7 @@ public class TaildirSource extends AbstractSource implements
         long now = System.currentTimeMillis();
         for (TailFile tf : reader.getTailFiles().values()) {
           if (tf.getLastUpdated() + idleTimeout < now && tf.getRaf() != null) {
-            logger.debug("TaildirSource.idleFileCheckerRunnable()-Add File: {" + tf.getPath() +
+            logger.debug("TaildirSource.idleFileCheckerRunnable()-Add File: {" + tf.getPath() + "," + tf.getInode() +
                     "} to idleInodes.");
             idleInodes.add(tf.getInode());
           }
