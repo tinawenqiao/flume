@@ -339,6 +339,7 @@ limitations under the License.
         <activeByDefault>false</activeByDefault>
       </activation>
       <properties>
+        <!--suppress UnresolvedMavenProperty -->
         <thrift.executable>${env.THRIFT_HOME}/bin/thrift</thrift.executable>
       </properties>
     </profile>
