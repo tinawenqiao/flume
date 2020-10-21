@@ -28,24 +28,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.PathMatcher;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.FileVisitor;
-import java.nio.file.FileVisitResult;
-import java.nio.file.SimpleFileVisitor;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.EnumSet;
-import java.util.Set;
 
 import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 
@@ -102,6 +88,8 @@ public class TaildirMatcher {
   private long lastCheckedTime = -1;
   // cached content, files which matched the pattern within the parent directory
   private List<File> lastMatchedFiles = Lists.newArrayList();
+  // hour from configuration
+  private final int ignoreHourBefore;
 
   /**
    * Package accessible constructor. From configuration context it represents a single
@@ -126,7 +114,7 @@ public class TaildirMatcher {
    * @see TaildirSourceConfigurationConstants
    */
   TaildirMatcher(String fileGroup, String dirPath, String filePath,
-                 boolean cachePatternMatching) {
+                 boolean cachePatternMatching,int ignoreHourBefore) {
     // store whatever came from configuration
     this.fileGroup = fileGroup;
     File f = new File(dirPath + File.separator + filePath);
@@ -134,7 +122,7 @@ public class TaildirMatcher {
     this.cachePatternMatching = cachePatternMatching;
     this.parentDir = new File(dirPath);
     this.fileMatcher = FS.getPathMatcher("regex:" + filePattern);
-
+    this.ignoreHourBefore = ignoreHourBefore;
     try {
       // sanity check
       Preconditions.checkState(parentDir.exists(),
@@ -233,7 +221,9 @@ public class TaildirMatcher {
           @Override
           public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
             if (fileMatcher.matches(file.toAbsolutePath())) {
-              result.add(file.toFile());
+              if (file.toFile().lastModified() >= getDateMs()) {
+                result.add(file.toFile());
+              }
             }
             return FileVisitResult.CONTINUE;
           }
@@ -270,8 +260,17 @@ public class TaildirMatcher {
         return lastModificationTimes.get(o1).compareTo(lastModificationTimes.get(o2));
       }
     });
-
     return files;
+  }
+  //diy 获取配置文件中指定的多少小时之前的时间戳
+  public Long getDateMs(){
+    Calendar calendar = Calendar.getInstance();
+    calendar.set(Calendar.HOUR_OF_DAY,calendar.get(Calendar.HOUR_OF_DAY)-this.ignoreHourBefore);
+    Long ignoreHourtoMillis = calendar.getTimeInMillis();
+    logger.debug(
+            "the timestamp from"+ignoreHourBefore+"hours ago was"+ignoreHourtoMillis
+    );
+    return ignoreHourtoMillis;
   }
 
   @Override

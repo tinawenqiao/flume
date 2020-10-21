@@ -18,6 +18,12 @@
  */
 package org.apache.flume.source.jms;
 
+import org.apache.flume.Context;
+import org.apache.flume.Event;
+import org.apache.flume.FlumeException;
+import org.apache.flume.event.SimpleEvent;
+
+import javax.jms.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutput;
@@ -27,17 +33,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
-
-import javax.jms.BytesMessage;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.ObjectMessage;
-import javax.jms.TextMessage;
-
-import org.apache.flume.Context;
-import org.apache.flume.Event;
-import org.apache.flume.FlumeException;
-import org.apache.flume.event.SimpleEvent;
 
 /**
  * <p>Converts BytesMessage, TextMessage, and ObjectMessage

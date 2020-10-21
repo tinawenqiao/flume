@@ -106,7 +106,7 @@ public class TestTaildirMatcher {
     append("file1");
 
     TaildirMatcher tm = new TaildirMatcher("f1",
-                                           tmpDir.getAbsolutePath(), "file.*", isCachingNeeded);
+                                           tmpDir.getAbsolutePath(), "file.*", isCachingNeeded,24);
     List<String> files = filesToNames(tm.getMatchingFiles());
     assertEquals(msgAlreadyExistingFile, 2, files.size());
     assertTrue(msgAlreadyExistingFile, files.contains("file1"));
@@ -140,7 +140,7 @@ public class TestTaildirMatcher {
     append("file0");
     append("file1");
 
-    TaildirMatcher tm = new TaildirMatcher("f1", tmpDir.getAbsolutePath(), "file.*", false);
+    TaildirMatcher tm = new TaildirMatcher("f1", tmpDir.getAbsolutePath(), "file.*", false,24);
     List<String> files = filesToNames(tm.getMatchingFiles());
     assertEquals(msgAlreadyExistingFile, 2, files.size());
     assertTrue(msgAlreadyExistingFile, files.contains("file1"));
@@ -172,7 +172,7 @@ public class TestTaildirMatcher {
   @Test
   public void testEmtpyDirMatching() throws Exception {
     TaildirMatcher tm = new TaildirMatcher("empty",
-                                           tmpDir.getAbsolutePath(), ".*", isCachingNeeded);
+                                           tmpDir.getAbsolutePath(), ".*", isCachingNeeded,24);
     List<File> files = tm.getMatchingFiles();
     assertNotNull(msgEmptyDir, files);
     assertTrue(msgEmptyDir, files.isEmpty());
@@ -182,7 +182,7 @@ public class TestTaildirMatcher {
   public void testNoMatching() throws Exception {
     TaildirMatcher tm = new TaildirMatcher(
         "nomatch",
-        tmpDir.getAbsolutePath(), "abracadabra_nonexisting", isCachingNeeded);
+        tmpDir.getAbsolutePath(), "abracadabra_nonexisting", isCachingNeeded,24);
     List<File> files = tm.getMatchingFiles();
     assertNotNull(msgNoMatch, files);
     assertTrue(msgNoMatch, files.isEmpty());
@@ -202,7 +202,7 @@ public class TestTaildirMatcher {
     new File(tmpDir, "recursiveDir").mkdir();
     new File(tmpDir + File.separator + "recursiveDir", "innerFile").createNewFile();
     TaildirMatcher tm = new TaildirMatcher("f1", tmpDir.getAbsolutePath(), "outer.*",
-                        isCachingNeeded);
+                        isCachingNeeded,24);
     List<String> files = filesToNames(tm.getMatchingFiles());
 
     assertEquals(msgSubDirs, 1, files.size());
@@ -219,10 +219,10 @@ public class TestTaildirMatcher {
 
     // Tail a.log and b.log
     TaildirMatcher tm1 = new TaildirMatcher("ab", tmpDir.getAbsolutePath(), "[ab].log",
-                                            isCachingNeeded);
+                                            isCachingNeeded,24);
     // Tail files that starts with c.log
     TaildirMatcher tm2 = new TaildirMatcher("c", tmpDir.getAbsolutePath(), "c.log.*",
-                                            isCachingNeeded);
+                                            isCachingNeeded,24);
 
     List<String> files1 = filesToNames(tm1.getMatchingFiles());
     List<String> files2 = filesToNames(tm2.getMatchingFiles());
@@ -249,7 +249,7 @@ public class TestTaildirMatcher {
     new File(tmpDir + File.separator + "subDir1", "innerFile0").createNewFile();
 
     TaildirMatcher tm = new TaildirMatcher("f1", tmpDir.getAbsolutePath(),
-            "subDir[0-9]/innerFile.*", isCachingNeeded);
+            "subDir[0-9]/innerFile.*", isCachingNeeded,24);
     List<String> files = filesToNames(tm.getMatchingFiles());
 
     assertEquals(1, files.size());
@@ -263,4 +263,6 @@ public class TestTaildirMatcher {
     assertTrue(files.contains("innerFile0"));
     assertTrue(files.contains("innerFile1"));
   }
+
 }
+

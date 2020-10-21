@@ -17,7 +17,21 @@
 
 package org.apache.flume.source.taildir;
 
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Table;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.gson.Gson;
+import org.apache.flume.*;
+import org.apache.flume.conf.Configurable;
+import org.apache.flume.instrumentation.SourceCounter;
+import org.apache.flume.source.AbstractSource;
+import org.apache.flume.source.PollableSourceConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -30,32 +44,9 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
-import org.apache.flume.ChannelException;
-import org.apache.flume.Context;
-import org.apache.flume.Event;
-import org.apache.flume.FlumeException;
-import org.apache.flume.PollableSource;
-import org.apache.flume.conf.Configurable;
-import org.apache.flume.instrumentation.SourceCounter;
-import org.apache.flume.source.AbstractSource;
-import org.apache.flume.source.PollableSourceConstants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Table;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.google.gson.Gson;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
 
 public class TaildirSource extends AbstractSource implements
     PollableSource, Configurable {
@@ -95,6 +86,7 @@ public class TaildirSource extends AbstractSource implements
   private int multilineMaxBytes;
   private boolean multilineMaxBytesTruncate;
   private int multilineMaxLines;
+  private int ignoreHourBefore;
 
   @Override
   public synchronized void start() {
@@ -117,6 +109,7 @@ public class TaildirSource extends AbstractSource implements
           .multilineMaxBytes(multilineMaxBytes)
           .multilineMaxBytesTruncate(multilineMaxBytesTruncate)
           .multilineMaxLines(multilineMaxLines)
+          .ignoreHourBefore(ignoreHourBefore)
           .build();
     } catch (IOException e) {
       throw new FlumeException("Error instantiating ReliableTaildirEventReader", e);
@@ -213,7 +206,7 @@ public class TaildirSource extends AbstractSource implements
     multilineMaxBytes = context.getInteger(MULTILINE_MAX_BYTES, DEFAULT_MULTILINE_MAX_BYTES);
     multilineMaxBytesTruncate = context.getBoolean(MULTILINE_MAX_BYTES_TRUNCATE, DEFAULT_MULTILINE_MAX_BYTES_TRUNCATE);
     multilineMaxLines = context.getInteger(MULTILINE_MAX_LINES, DEFAULT_MULTILINE_MAX_LINES);
-
+    ignoreHourBefore = context.getInteger(IGNORE_HOUR_BEFORE,DEFAULT_IGNORE_HOUR_BEFORE);
     if (sourceCounter == null) {
       sourceCounter = new SourceCounter(getName());
     }
@@ -260,9 +253,9 @@ public class TaildirSource extends AbstractSource implements
   public Status process() {
     Status status = Status.READY;
     try {
-      Map<Long, TailFile> olderTailFiles = reader.getTailFiles();
+      Map<Long, TailFile> olderTailFiles = reader.getTailFiles(); //(inode, tf) map
       existingInodes.clear();
-      ListIterator<Long> listIterator = reader.updateTailFiles().listIterator();
+      ListIterator<Long> listIterator = reader.updateTailFiles().listIterator();  //inode list
       while(listIterator.hasNext()) {
         long inode = listIterator.next();
         existingInodes.add(inode);

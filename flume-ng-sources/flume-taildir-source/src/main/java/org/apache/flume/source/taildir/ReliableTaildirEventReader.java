@@ -38,14 +38,12 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_DIR;
-import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.FILE_GROUPS_SUFFIX_FILE;
+import static org.apache.flume.source.taildir.TaildirSourceConfigurationConstants.*;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -76,12 +74,12 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
    * Create a ReliableTaildirEventReader to watch the given directory.
    */
   private ReliableTaildirEventReader(Table<String, String, String> filePaths,
-      Table<String, String, String> headerTable, String positionFilePath,
-      boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
-      boolean annotateFileName, String fileNameHeader,
-      boolean multiline, String multilinePattern,
-      String multilinePatternBelong, boolean multilinePatternMatched, long eventTimeoutSecs,
-      int multilineMaxBytes, boolean multilineMaxBytesTruncate, int multilineMaxLines)
+                                     Table<String, String, String> headerTable, String positionFilePath,
+                                     boolean skipToEnd, boolean addByteOffset, boolean cachePatternMatching,
+                                     boolean annotateFileName, String fileNameHeader,
+                                     boolean multiline, String multilinePattern,
+                                     String multilinePatternBelong, boolean multilinePatternMatched, long eventTimeoutSecs,
+                                     int multilineMaxBytes, boolean multilineMaxBytesTruncate, int multilineMaxLines, int ignoreHourBefore)
           throws IOException {
     // Sanity checks
     Preconditions.checkNotNull(filePaths);
@@ -98,7 +96,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       Map<String, String> paths = filePaths.row(fg);
       String parentDir = paths.get(FILE_GROUPS_SUFFIX_DIR.substring(1));
       String filePath = paths.get(FILE_GROUPS_SUFFIX_FILE.substring(1));
-      taildirCache.add(new TaildirMatcher(fg, parentDir, filePath, cachePatternMatching));
+      taildirCache.add(new TaildirMatcher(fg, parentDir, filePath, cachePatternMatching, ignoreHourBefore));
     }
     logger.info("taildirCache: " + taildirCache.toString());
     logger.info("headerTable: " + headerTable.toString());
@@ -234,6 +232,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       currentFile.setMultilineMaxBytesTruncate(mulitlineMaxBytesTruncate);
       currentFile.setMultilineMaxLines(multilineMaxLines);
     }
+
     List<Event> events = currentFile.readEvents(numEvents, backoffWithoutNL, addByteOffset);
     if (events.isEmpty()) {
       return events;
@@ -364,6 +363,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
     private int multilineMaxBytes;
     private boolean multilineMaxBytesTruncate;
     private int multilineMaxLines;
+    private int ignoreHourBefore;
 
     public Builder filePaths(Table<String, String, String> filePaths) {
       this.filePaths = filePaths;
@@ -445,6 +445,11 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
       return this;
     }
 
+    public Builder ignoreHourBefore(int ignoreHourBefore) {
+      this.ignoreHourBefore = ignoreHourBefore;
+      return this;
+    }
+
     public ReliableTaildirEventReader build() throws IOException {
       return new ReliableTaildirEventReader(filePaths, headerTable, positionFilePath, skipToEnd,
                                             addByteOffset, cachePatternMatching,
@@ -452,7 +457,7 @@ public class ReliableTaildirEventReader implements ReliableEventReader {
                                             multiline, multilinePattern,
                                             multilinePatternBelong, multilinePatternMatched,
                                             eventTimeoutSecs, multilineMaxBytes,
-                                            multilineMaxBytesTruncate, multilineMaxLines);
+                                            multilineMaxBytesTruncate, multilineMaxLines, ignoreHourBefore);
     }
   }
 

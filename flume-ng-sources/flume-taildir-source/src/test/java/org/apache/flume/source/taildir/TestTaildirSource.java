@@ -102,7 +102,7 @@ public class TestTaildirSource {
     // Tail files that starts with c.log
     context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
     context.put(FILE_GROUPS_PREFIX + "c" + FILE_GROUPS_SUFFIX_FILE, "c.log.*");
-
+    context.put(IGNORE_HOUR_BEFORE,"20");
     Configurables.configure(source, context);
     source.start();
     source.process();
@@ -682,4 +682,46 @@ public class TestTaildirSource {
     assertEquals(1, out.size());
     assertTrue(out.get(0).equals("2017-01-01 00:00:01,111 line1\n"));
   }
+
+  @Test
+  public void testignoreHourBefore() throws IOException, InterruptedException {
+    File f1 = new File(tmpDir, "file1");
+    Files.write("file1line1\nfile1line2\n", f1, Charsets.UTF_8);
+    f1.setLastModified(1602655978000L);
+
+    File f2 = new File(tmpDir,"file2");
+    Files.write("file2line1\nfile2line2\n",f2,Charsets.UTF_8);
+    f2.setLastModified(System.currentTimeMillis());
+
+    Context context = new Context();
+    context.put(POSITION_FILE, posFilePath);
+    context.put(FILE_GROUPS, "fg");
+    context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "fg" + FILE_GROUPS_SUFFIX_FILE, "file.*");
+    /*context.put(FILE_GROUPS_PREFIX + "f2" + FILE_GROUPS_SUFFIX_DIR, tmpDir.getAbsolutePath());
+    context.put(FILE_GROUPS_PREFIX + "f2" + FILE_GROUPS_SUFFIX_FILE, "file2$");*/
+    context.put(IGNORE_HOUR_BEFORE,"24");
+    Configurables.configure(source, context);
+    source.start();
+    source.process();
+    Transaction txn = channel.getTransaction();
+    txn.begin();
+    List<String> out = Lists.newArrayList();
+    for (int i = 0; i < 4; i++) {
+      Event e = channel.take();
+      if (e != null) {
+        out.add(TestTaildirEventReader.bodyAsString(e));
+      }
+    }
+    txn.commit();
+    txn.close();
+
+    assertEquals(2, out.size());
+    // Make sure we got every file
+    assertFalse(out.contains("file1line1"));
+    assertFalse(out.contains("file1line2"));
+    assertTrue(out.contains("file2line1"));
+    assertTrue(out.contains("file2line2"));
+  }
+
 }

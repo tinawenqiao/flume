@@ -113,4 +113,12 @@ public class TaildirSourceConfigurationConstants {
    */
   public static final String MULTILINE_MAX_LINES = "multilineMaxLines";
   public static final int DEFAULT_MULTILINE_MAX_LINES = 500;
+
+  /**
+   * 设置忽略多少小时之前的日志
+   * 默认是0，全部采集，没有时间限制
+   */
+  public static final String IGNORE_HOUR_BEFORE = "ignoreHourBefore";
+  public static final int DEFAULT_IGNORE_HOUR_BEFORE = 0;
+
 }
